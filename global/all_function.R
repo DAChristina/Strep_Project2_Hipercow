@@ -31,7 +31,9 @@ transform <- function(pars) {
 prepare_parameters <- function(initial_pars, priors, proposal, transform) {
   
   mcmc_pars <- mcstate::pmcmc_parameters$new(
-    list(mcstate::pmcmc_parameter("just_beta_0", 0.5, min = 0, max = 0.8,
+    list(#mcstate::pmcmc_parameter("I_ini", 120, min = 50, max = 150,
+                                  #prior = function(s) dunif(s, min = 50, max = 150, log = TRUE)), # draws from uniform distribution
+         mcstate::pmcmc_parameter("just_beta_0", 0.5, min = 0, max = 0.8,
                                   prior = function(s) dgamma(s, shape = 1, scale = 0.1, log = TRUE)), # draws from gamma distribution
          mcstate::pmcmc_parameter("just_sigma", 0.01, min = 0, max = 1,
                                   prior = function(s) dgamma(s, shape = 1, scale = 1, log = TRUE)) # draws from gamma distribution
@@ -44,6 +46,9 @@ prepare_parameters <- function(initial_pars, priors, proposal, transform) {
 prepare_priors <- function(pars) {
   priors <- list()
   
+  # priors$I_ini <- function(s) {
+  #   dunif(s, min = 50, max = 150, log = TRUE)
+  # }
   priors$just_beta <- function(s) {
     dgamma(s, shape = 1, scale = 0.1, log = TRUE)
   }

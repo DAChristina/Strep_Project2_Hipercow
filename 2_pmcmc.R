@@ -74,8 +74,8 @@ filter$run(pars)
 
 priors <- prepare_priors(pars)
 proposal_matrix <- diag(1, 2)
-rownames(proposal_matrix) <- c("just_beta", "just_sigma")
-colnames(proposal_matrix) <- c("just_beta", "just_sigma")
+# rownames(proposal_matrix) <- c("just_beta", "just_sigma")
+# colnames(proposal_matrix) <- c("just_beta", "just_sigma")
 
 mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = proposal_matrix, transform = transform)
 
