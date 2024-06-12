@@ -35,14 +35,10 @@ rmarkdown::paged_table(sir_data)
 gen_sir <- odin.dust::odin_dust("inputs/sir_stochastic.R")
 
 # This is part of sir odin model:
-pars <- list(A_ini = 6e7*(2e-6), # S_ini*(2e-6) = 120 people,
-             time_shift = 0.1, # in toy data the real value of timeshift = 0.2
-             beta_0 = 0.16565, # in toy data the real value of beta_0 = 0.36565
-             beta_1 = 0.05, # in toy data the real value of beta_1 = 0.07
-             wane = 0.002,
-             log_delta = (-4.98), # will be fitted to logN(-7, 0.7)
-             sigma_2 = 1
-) # Serotype 1 is categorised to have the lowest carriage duration
+pars <- list(I_ini = 120, # in toy data the real value = 100
+             just_beta = 0.5, # in toy data the real value = 0.3
+             just_sigma = 0.03 # in toy data the real value = 0.01
+)
 
 # https://mrc-ide.github.io/odin-dust-tutorial/mcstate.html#/the-model-over-time
 n_particles <- 50 # Trial n_particles = 50
@@ -60,7 +56,7 @@ filter$run(pars)
 # x
 # 
 # var(x)
-# # [1] 266.5598
+# # [1] 8.738038e-17
 # 69 / 267 # Trial 69 particles for 267 var; how many particles are needed?
 # # [1] 0.258427
 # 69  / 4 # change by the factor of 4
@@ -77,9 +73,9 @@ filter$run(pars)
 # Update n_particles based on calculation in 4 cores with var(x) ~ 267: 32000
 
 priors <- prepare_priors(pars)
-proposal_matrix <- diag(1, 6)
-rownames(proposal_matrix) <- c("time_shift", "beta_0", "beta_1", "wane", "log_delta", "sigma_2")
-colnames(proposal_matrix) <- c("time_shift", "beta_0", "beta_1", "wane", "log_delta", "sigma_2")
+proposal_matrix <- diag(1, 2)
+rownames(proposal_matrix) <- c("just_beta", "just_sigma")
+colnames(proposal_matrix) <- c("just_beta", "just_sigma")
 
 mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = proposal_matrix, transform = transform)
 

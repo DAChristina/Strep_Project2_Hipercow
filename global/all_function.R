@@ -2,8 +2,8 @@
 case_compare <- function(state, observed, pars = NULL) {
   exp_noise <- 1e4
   
-  # incidence based on model's "n_AD_daily" from gen_sir
-  incidence_modelled <- state[6, , drop = TRUE]
+  # incidence based on model's "n_SI_daily" from gen_sir$new(pars = list(), time = 0, n_particles = 1L)$info()
+  incidence_modelled <- state[5, , drop = TRUE] # n_SI_daily is located at state[5, , ]
   
   # incidence based on data
   incidence_observed <- observed$cases # daily new cases
@@ -31,18 +31,10 @@ transform <- function(pars) {
 prepare_parameters <- function(initial_pars, priors, proposal, transform) {
   
   mcmc_pars <- mcstate::pmcmc_parameters$new(
-    list(mcstate::pmcmc_parameter("time_shift", 0.1, min = 0, max = 1,
-                                  prior = function(s) dunif(s, min = 0, max = 1, log = TRUE)), # ~Uniform[0,1] in the proportion of 365 days
-         mcstate::pmcmc_parameter("beta_0", 0.16565, min = 0, max = 0.8,
-                                  prior = function(s) dgamma(s, shape = 1, scale = 0.1, log = TRUE)), # draws from gamma distribution dgamma(1, 0.2) --> exp dist)
-         mcstate::pmcmc_parameter("beta_1", 0.05, min = 0, max = 0.8,
-                                  prior = function(s) dgamma(s, shape = 1, scale = 0.1, log = TRUE)), # draws from gamma distribution dgamma(1, 0.2) --> exp dist
-         mcstate::pmcmc_parameter("wane", 0.002, min = 0, max = 0.8,
-                                  prior = function(s) dgamma(s, shape = 1, scale = 0.1, log = TRUE)), # draws from gamma distribution dgamma(1, 0.2) --> exp dist
-         mcstate::pmcmc_parameter("log_delta", (-4.7), min = (-10), max = 0.7,
-                                  prior = function(s) dunif(s, min = (-10), max = 0.7, log = TRUE)), # logN distribution for children & adults (Lochen et al., 2022)
-         mcstate::pmcmc_parameter("sigma_2", 1, min = 0, max = 10,
-                                  prior = function(s) dgamma(s, shape = 1, scale = 1, log = TRUE)) # shape = 1 , scale = 1 to capture 5 days/more (or dgamma(2.5, 0.5))?
+    list(mcstate::pmcmc_parameter("just_beta_0", 0.5, min = 0, max = 0.8,
+                                  prior = function(s) dgamma(s, shape = 1, scale = 0.1, log = TRUE)), # draws from gamma distribution
+         mcstate::pmcmc_parameter("just_sigma", 0.01, min = 0, max = 1,
+                                  prior = function(s) dgamma(s, shape = 1, scale = 1, log = TRUE)) # draws from gamma distribution
     ),
     proposal = proposal,
     transform = transform)
@@ -52,22 +44,10 @@ prepare_parameters <- function(initial_pars, priors, proposal, transform) {
 prepare_priors <- function(pars) {
   priors <- list()
   
-  priors$time_shift <- function(s) {
-    dunif(s, min = 0, max = 1, log = TRUE)
-  }
-  priors$beta_0 <- function(s) {
+  priors$just_beta <- function(s) {
     dgamma(s, shape = 1, scale = 0.1, log = TRUE)
   }
-  priors$beta_1 <- function(s) {
-    dgamma(s, shape = 1, scale = 0.1, log = TRUE)
-  }
-  priors$wane <- function(s) {
-    dgamma(s, shape = 1, scale = 0.1, log = TRUE)
-  }
-  priors$log_delta <- function(s) {
-    dunif(s, min = (-10), max = 0.7, log = TRUE)
-  }
-  priors$sigma_2 <- function(s) {
+  priors$just_sigma <- function(s) {
     dgamma(s, shape = 1, scale = 1, log = TRUE)
   }
   priors
