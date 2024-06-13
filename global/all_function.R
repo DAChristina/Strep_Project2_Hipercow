@@ -19,11 +19,11 @@ case_compare <- function(state, observed, pars = NULL) {
 # https://github.com/mrc-ide/mcstate/blob/da9f79e4b5dd421fd2e26b8b3d55c78735a29c27/tests/testthat/test-if2.R#L40
 # https://github.com/mrc-ide/mcstate/issues/184
 parameter_transform <- function(pars) {
-  I_ini <- pars[["I_ini"]]
+  # I_ini <- pars[["I_ini"]]
   just_beta <- pars[["just_beta"]]
   just_sigma <- pars[["just_sigma"]]
   
-  list(I_ini = I_ini,
+  list(#I_ini = I_ini,
        just_beta = just_beta,
        just_sigma = just_sigma)
   
@@ -36,11 +36,11 @@ transform <- function(pars) {
 prepare_parameters <- function(initial_pars, priors, proposal, transform) {
   
   mcmc_pars <- mcstate::pmcmc_parameters$new(
-    list(mcstate::pmcmc_parameter("I_ini", 0.1, min = 0, max = 0.5,
-                                  prior = function(s) log(1e-10)), # assume I_ini draws from uniform distribution
+    list(#mcstate::pmcmc_parameter("I_ini", 0.001, min = 0, max = 0.5,
+                                  #prior = function(s) log(1e-10)), # assume I_ini draws from uniform distribution
          mcstate::pmcmc_parameter("just_beta", 0.5, min = 0, max = 0.8,
                                   prior = priors$just_beta),
-         mcstate::pmcmc_parameter("just_sigma", 0.01, min = 0, max = 1,
+         mcstate::pmcmc_parameter("just_sigma", 0.05, min = 0, max = 1,
                                   prior = priors$just_sigma)
     ),
     proposal = proposal,
@@ -88,6 +88,10 @@ pmcmc_trace <- function(mcmc1) {
 ################################################################################
 # Tuning functions
 tuning_pmcmc_further_process <- function(n_steps, tune_pmcmc_result) {
-  mcmc_tuning_result <- coda::as.mcmc(cbind(tune_pmcmc_result$probabilities, tune_pmcmc_result$pars))
+  processed_chains <- mcstate::pmcmc_thin(tune_pmcmc_result, burnin = n_steps/2, thin = 2)
+  parameter_mean_hpd <- apply(processed_chains$pars, 2, mean)
+  parameter_mean_hpd
+  
+  mcmc_tuning_result <- coda::as.mcmc(cbind(processed_chains$probabilities, processed_chains$pars))
   mcmc_tuning_result
 }

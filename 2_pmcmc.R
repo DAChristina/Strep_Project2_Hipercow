@@ -62,7 +62,7 @@ filter$run(pars)
 
 
 priors <- prepare_priors(pars)
-proposal_matrix <- diag(1, 3)
+proposal_matrix <- diag(1, 2)
 # rownames(proposal_matrix) <- c("just_beta", "just_sigma")
 # colnames(proposal_matrix) <- c("just_beta", "just_sigma")
 
@@ -126,15 +126,13 @@ pmcmc_run <- function(n_particles, n_steps){
 # pmcmc_run_result <- pmcmc_run(10, 100)
 
 # 3. Tuning the pMCMC ##########################################################
-
-# New proposal matrix
-new_proposal_matrix <- as.matrix(read.csv("outputs/new_proposal_mtx.csv"))
-new_proposal_matrix <- new_proposal_matrix[, -1]
-new_proposal_matrix <- apply(new_proposal_matrix, 2, as.numeric)
-colnames(new_proposal_matrix) <- c("I_ini", "just_beta", "just_sigma")
-rownames(new_proposal_matrix) <- c("I_ini", "just_beta", "just_sigma")
-
 pmcmc_tuning <- function(n_particles, n_steps){
+  # New proposal matrix
+  new_proposal_matrix <- as.matrix(read.csv("outputs/new_proposal_mtx.csv"))
+  new_proposal_matrix <- new_proposal_matrix[, -1]
+  new_proposal_matrix <- apply(new_proposal_matrix, 2, as.numeric)
+  colnames(new_proposal_matrix) <- c("just_beta", "just_sigma")
+  rownames(new_proposal_matrix) <- c("just_beta", "just_sigma")
   
   tune_mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = new_proposal_matrix, transform = transform)
   
