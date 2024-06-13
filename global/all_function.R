@@ -8,15 +8,10 @@ case_compare <- function(state, observed, pars = NULL) {
   # incidence based on data
   incidence_observed <- observed$cases # daily new cases
   
-  if (is.na(observed$cases)) {
-    loglik_cases <- numeric(n)
-    
-  } else {
-    n <- ncol(state)
-    lamb <- incidence_modelled + rexp(n, exp_noise)
-    loglik_cases <- dpois(x = incidence_observed, lambda = lamb)
-    
-  }
+  n <- ncol(state)
+  lamb <- incidence_modelled + rexp(n, exp_noise)
+  loglik_cases <- sum(dpois(x = incidence_observed, lambda = lamb, log = T))
+  
   return(loglik_cases)
 }
 

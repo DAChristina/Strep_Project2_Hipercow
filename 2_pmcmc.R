@@ -33,7 +33,6 @@ rmarkdown::paged_table(sir_data)
 # I updated the code, filled the parameters with numbers;
 # e.g.dt <- user(0) because if dt <- user() generates error during MCMC run
 gen_sir <- odin.dust::odin_dust("inputs/sir_stochastic.R")
-gen_sir <- dust::dust_example("sir")
 
 # This is part of sir odin model:
 pars <- list(I_ini = 0.001, # in toy data the real value = 0.0015*S_ini (100 people)
@@ -87,11 +86,11 @@ filter_deterministic <- mcstate::particle_deterministic$new(data = sir_data,
 dir.create("outputs", FALSE, TRUE)
 
 pmcmc_run <- function(n_particles, n_steps){
-  # filter <- mcstate::particle_filter$new(data = sir_data,
-  #                                        model = gen_sir, # Use odin.dust input
-  #                                        n_particles = n_particles,
-  #                                        compare = case_compare,
-  #                                        seed = 1L)
+  filter <- mcstate::particle_filter$new(data = sir_data,
+                                         model = gen_sir, # Use odin.dust input
+                                         n_particles = n_particles,
+                                         compare = case_compare,
+                                         seed = 1L)
   
   control <- mcstate::pmcmc_control(n_steps = n_steps,
                                     rerun_every = 50,
@@ -99,26 +98,7 @@ pmcmc_run <- function(n_particles, n_steps){
                                     progress = TRUE)
   
   # The pmcmc
-  # pmcmc_result <- mcstate::pmcmc(mcmc_pars, filter_deterministic, control = control)
-  
-  
-  beta <- mcstate::pmcmc_parameter("beta", 0.2, min = 0, max = 1, prior = function (p)
-    dgamma(p, shape = 1, scale = 0.2, log = TRUE))
-  gamma <- mcstate::pmcmc_parameter("gamma", 0.1, min = 0, prior = function(p)
-    dgamma(p, shape = 1, scale = 0.2, log = TRUE))
-  
-  proposal_matrix <- diag(0.1, 2)
-  mcmc_pars <- mcstate::pmcmc_parameters$new(list(beta = beta, gamma = gamma),
-                                             proposal_matrix)
-  
   pmcmc_result <- mcstate::pmcmc(mcmc_pars, filter_deterministic, control = control)
-  
-  
-  
-  
-  
-  
-  
   pmcmc_result
   saveRDS(pmcmc_result, "outputs/pmcmc_result.rds")
   
