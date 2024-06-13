@@ -37,7 +37,7 @@ prepare_parameters <- function(initial_pars, priors, proposal, transform) {
   
   mcmc_pars <- mcstate::pmcmc_parameters$new(
     list(mcstate::pmcmc_parameter("I_ini", 0.1, min = 0, max = 0.5,
-                                  prior = function(s) log(1e-10)),
+                                  prior = function(s) log(1e-10)), # assume I_ini draws from uniform distribution
          mcstate::pmcmc_parameter("just_beta", 0.5, min = 0, max = 0.8,
                                   prior = priors$just_beta),
          mcstate::pmcmc_parameter("just_sigma", 0.01, min = 0, max = 1,
@@ -83,4 +83,11 @@ pmcmc_trace <- function(mcmc1) {
   # png("pictures/mcmc1.png", res = 1200)
   # plot(mcmc1)
   # dev.off()
+}
+
+################################################################################
+# Tuning functions
+tuning_pmcmc_further_process <- function(n_steps, tune_pmcmc_result) {
+  mcmc_tuning_result <- coda::as.mcmc(cbind(tune_pmcmc_result$probabilities, tune_pmcmc_result$pars))
+  mcmc_tuning_result
 }

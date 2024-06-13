@@ -125,3 +125,50 @@ pmcmc_run <- function(n_particles, n_steps){
 # Test
 # pmcmc_run_result <- pmcmc_run(10, 100)
 
+# 3. Tuning the pMCMC ##########################################################
+
+# New proposal matrix
+new_proposal_matrix <- as.matrix(read.csv("outputs/new_proposal_mtx.csv"))
+new_proposal_matrix <- new_proposal_matrix[, -1]
+new_proposal_matrix <- apply(new_proposal_matrix, 2, as.numeric)
+colnames(new_proposal_matrix) <- c("I_ini", "just_beta", "just_sigma")
+rownames(new_proposal_matrix) <- c("I_ini", "just_beta", "just_sigma")
+
+pmcmc_tuning <- function(n_particles, n_steps){
+  
+  tune_mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = new_proposal_matrix, transform = transform)
+  
+  tune_control <- mcstate::pmcmc_control(n_steps = n_steps,
+                                    n_chains = 4,
+                                    rerun_every = 50,
+                                    rerun_random = TRUE,
+                                    progress = TRUE)
+  
+  # The pmcmc
+  tune_pmcmc_result <- mcstate::pmcmc(tune_mcmc_pars, filter_deterministic, control = tune_control)
+  tune_pmcmc_result
+  saveRDS(tune_pmcmc_result, "outputs/tune_pmcmc_result.rds")
+  
+  # new_proposal_mtx <- cov(pmcmc_result$pars)
+  # write.csv(new_proposal_mtx, "outputs/new_proposal_mtx.csv", row.names = TRUE)
+  
+  tune_lpost_max <- which.max(tune_pmcmc_result$probabilities[, "log_posterior"])
+  write.csv(as.list(tune_pmcmc_result$pars[, ]),#lpost_max, ]),
+            "outputs/tune_initial.csv", row.names = FALSE)
+  
+  # Further processing for thinning chains
+  mcmc2 <- tuning_pmcmc_further_process(n_steps, tune_pmcmc_result)
+  write.csv(mcmc2, "outputs/mcmc2.csv", row.names = TRUE)
+  
+  # Calculating ESS & Acceptance Rate
+  tune_calc_ess <- ess_calculation(mcmc2)
+  write.csv(tune_calc_ess, "outputs/tune_calc_ess.csv", row.names = TRUE)
+  
+  # Figures! (still failed, margin error)
+  fig <- pmcmc_trace(mcmc2)
+  
+}
+
+# Test
+# pmcmc_run_result <- pmcmc_run(10, 100)
+# tuning_run_result <- pmcmc_tuning(10, 100)

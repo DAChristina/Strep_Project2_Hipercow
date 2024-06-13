@@ -47,6 +47,25 @@ task_result(id_single)
 task_log_show(id_single)
 task_info(id_single)
 
+################################################################################
+id_tuning <- task_create_expr(pmcmc_tuning(15376*4, 1e5), # Update n_particles = 32000, n_steps = 1e6?
+                              resources = resources
+)
+
+# Something related to test the submitted job
+task_status(id_tuning)
+task_result(id_tuning)
+task_log_show(id_tuning)
+task_info(id_tuning)
+
+
+
+
+
+
+
+
+
 # Trial parallel job submission:
 id_parallel <- task_create_expr(
   parallel::clusterApply(cl = NULL, 1:20, function(i, j) pmcmc_run(500, 100),
