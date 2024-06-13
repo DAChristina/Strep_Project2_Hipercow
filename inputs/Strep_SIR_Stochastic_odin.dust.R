@@ -3,7 +3,7 @@ library(odin.dust)
 gen_sir <- odin.dust::odin_dust("inputs/sir_stochastic.R")
 
 # Running the SIR model with dust
-pars <- list(I_ini = 100,
+pars <- list(I_ini = 0.0015,
              just_beta = 0.3,
              just_sigma = 0.01
 )
@@ -22,7 +22,7 @@ sir_model$update_state(pars = pars,
 
 # all_date <- incidence$day
 # all_date <- data.frame(col = integer(4745))
-n_times <- 500 # 500 for trial
+n_times <- 200 # 500 for trial
 n_particles <- 15
 x <- array(NA, dim = c(sir_model$info()$len, n_particles, n_times))
 

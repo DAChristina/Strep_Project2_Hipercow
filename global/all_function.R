@@ -17,26 +17,36 @@ case_compare <- function(state, observed, pars = NULL) {
     loglik_cases <- dpois(x = incidence_observed, lambda = lamb)
     
   }
-  
+  return(loglik_cases)
 }
 
 # That transform function
 # https://github.com/mrc-ide/mcstate/blob/da9f79e4b5dd421fd2e26b8b3d55c78735a29c27/tests/testthat/test-if2.R#L40
 # https://github.com/mrc-ide/mcstate/issues/184
+parameter_transform <- function(pars) {
+  I_ini <- pars[["I_ini"]]
+  just_beta <- pars[["just_beta"]]
+  just_sigma <- pars[["just_sigma"]]
+  
+  list(I_ini = I_ini,
+       just_beta = just_beta,
+       just_sigma = just_sigma)
+  
+}
+
 transform <- function(pars) {
-  pars <- as.list(pars)
-  pars
+  parameter_transform(pars)
 }
 
 prepare_parameters <- function(initial_pars, priors, proposal, transform) {
   
   mcmc_pars <- mcstate::pmcmc_parameters$new(
-    list(#mcstate::pmcmc_parameter("I_ini", 120, min = 50, max = 150,
-                                  #prior = function(s) dunif(s, min = 50, max = 150, log = TRUE)), # draws from uniform distribution
-         mcstate::pmcmc_parameter("just_beta_0", 0.5, min = 0, max = 0.8,
-                                  prior = function(s) dgamma(s, shape = 1, scale = 0.1, log = TRUE)), # draws from gamma distribution
+    list(mcstate::pmcmc_parameter("I_ini", 0.1, min = 0, max = 0.5,
+                                  prior = function(s) log(1e-10)),
+         mcstate::pmcmc_parameter("just_beta", 0.5, min = 0, max = 0.8,
+                                  prior = priors$just_beta),
          mcstate::pmcmc_parameter("just_sigma", 0.01, min = 0, max = 1,
-                                  prior = function(s) dgamma(s, shape = 1, scale = 1, log = TRUE)) # draws from gamma distribution
+                                  prior = priors$just_sigma)
     ),
     proposal = proposal,
     transform = transform)
@@ -47,8 +57,8 @@ prepare_priors <- function(pars) {
   priors <- list()
   
   # priors$I_ini <- function(s) {
-  #   dunif(s, min = 50, max = 150, log = TRUE)
-  # }
+  #   dunif(s, min = 0, max = 0.5, log = TRUE)
+  # } # assume I_ini draws from uniform distribution
   priors$just_beta <- function(s) {
     dgamma(s, shape = 1, scale = 0.1, log = TRUE)
   }

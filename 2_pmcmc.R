@@ -33,11 +33,12 @@ rmarkdown::paged_table(sir_data)
 # I updated the code, filled the parameters with numbers;
 # e.g.dt <- user(0) because if dt <- user() generates error during MCMC run
 gen_sir <- odin.dust::odin_dust("inputs/sir_stochastic.R")
+gen_sir <- dust::dust_example("sir")
 
 # This is part of sir odin model:
-pars <- list(I_ini = 120, # in toy data the real value = 100
+pars <- list(I_ini = 0.001, # in toy data the real value = 0.0015*S_ini (100 people)
              just_beta = 0.5, # in toy data the real value = 0.3
-             just_sigma = 0.03 # in toy data the real value = 0.01
+             just_sigma = 0.05 # in toy data the real value = 0.01
 )
 
 # https://mrc-ide.github.io/odin-dust-tutorial/mcstate.html#/the-model-over-time
@@ -56,24 +57,13 @@ filter$run(pars)
 # x
 # 
 # var(x)
-# # [1] 8.738038e-17
-# 69 / 267 # Trial 69 particles for 267 var; how many particles are needed?
-# # [1] 0.258427
-# 69  / 4 # change by the factor of 4
-# # [1] 17.25
-# 69  / 4  /4
-# # [1] 4.3125
-# 69  / 4  /4 /4
-# # [1] 1.078125 # so the factor is 4*4*4 to finally get roughly 1 particle
-# 4 * 4 * 4
-# # [1] 64
-# 4 * 4 * 4 * 500
-# # [1] 32000 --> particles needed for var(x) = 1
+# # [1] 0.03251836
+# 500 / 0.03251836 # Trial 500 particles for 0.03251836 var; how many particles are needed?
+# # [1] 15375.93
 
-# Update n_particles based on calculation in 4 cores with var(x) ~ 267: 32000
 
 priors <- prepare_priors(pars)
-proposal_matrix <- diag(1, 2)
+proposal_matrix <- diag(1, 3)
 # rownames(proposal_matrix) <- c("just_beta", "just_sigma")
 # colnames(proposal_matrix) <- c("just_beta", "just_sigma")
 
@@ -97,11 +87,11 @@ filter_deterministic <- mcstate::particle_deterministic$new(data = sir_data,
 dir.create("outputs", FALSE, TRUE)
 
 pmcmc_run <- function(n_particles, n_steps){
-  filter <- mcstate::particle_filter$new(data = sir_data,
-                                         model = gen_sir, # Use odin.dust input
-                                         n_particles = n_particles,
-                                         compare = case_compare,
-                                         seed = 1L)
+  # filter <- mcstate::particle_filter$new(data = sir_data,
+  #                                        model = gen_sir, # Use odin.dust input
+  #                                        n_particles = n_particles,
+  #                                        compare = case_compare,
+  #                                        seed = 1L)
   
   control <- mcstate::pmcmc_control(n_steps = n_steps,
                                     rerun_every = 50,
@@ -109,7 +99,26 @@ pmcmc_run <- function(n_particles, n_steps){
                                     progress = TRUE)
   
   # The pmcmc
+  # pmcmc_result <- mcstate::pmcmc(mcmc_pars, filter_deterministic, control = control)
+  
+  
+  beta <- mcstate::pmcmc_parameter("beta", 0.2, min = 0, max = 1, prior = function (p)
+    dgamma(p, shape = 1, scale = 0.2, log = TRUE))
+  gamma <- mcstate::pmcmc_parameter("gamma", 0.1, min = 0, prior = function(p)
+    dgamma(p, shape = 1, scale = 0.2, log = TRUE))
+  
+  proposal_matrix <- diag(0.1, 2)
+  mcmc_pars <- mcstate::pmcmc_parameters$new(list(beta = beta, gamma = gamma),
+                                             proposal_matrix)
+  
   pmcmc_result <- mcstate::pmcmc(mcmc_pars, filter_deterministic, control = control)
+  
+  
+  
+  
+  
+  
+  
   pmcmc_result
   saveRDS(pmcmc_result, "outputs/pmcmc_result.rds")
   
