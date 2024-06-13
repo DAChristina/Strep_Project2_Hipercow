@@ -10,7 +10,7 @@ case_compare <- function(state, observed, pars = NULL) {
   
   n <- ncol(state)
   lamb <- incidence_modelled + rexp(n, exp_noise)
-  loglik_cases <- sum(dpois(x = incidence_observed, lambda = lamb, log = T))
+  loglik_cases <- dpois(x = incidence_observed, lambda = lamb, log = T)
   
   return(loglik_cases)
 }
