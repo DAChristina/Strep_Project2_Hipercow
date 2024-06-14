@@ -35,7 +35,7 @@ rmarkdown::paged_table(sir_data)
 gen_sir <- odin.dust::odin_dust("inputs/sir_stochastic.R")
 
 # This is part of sir odin model:
-pars <- list(I_ini = 0.001, # in toy data the real value = 0.0015*S_ini (100 people)
+pars <- list(I_ini = (-3), # in toy data the real value = 0.0015*S_ini (100 people)
              just_beta = 0.5, # in toy data the real value = 0.3
              just_sigma = 0.05 # in toy data the real value = 0.01
 )

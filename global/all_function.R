@@ -36,7 +36,7 @@ transform <- function(pars) {
 prepare_parameters <- function(initial_pars, priors, proposal, transform) {
   
   mcmc_pars <- mcstate::pmcmc_parameters$new(
-    list(mcstate::pmcmc_parameter("I_ini", 0.001, min = 0, max = 0.1,
+    list(mcstate::pmcmc_parameter("I_ini", (-3), min = (-4), max = 0,
                                   prior = priors$I_ini),
          mcstate::pmcmc_parameter("just_beta", 0.5, min = 0, max = 0.6,
                                   prior = priors$just_beta),
@@ -52,7 +52,7 @@ prepare_priors <- function(pars) {
   priors <- list()
   
   priors$I_ini <- function(s) {
-    dgamma(s, shape = 1, scale = 0.1, log = TRUE)
+    dnorm(s, mean = (-3), sd = 1, log = T)
   }
   priors$just_beta <- function(s) {
     dgamma(s, shape = 1, scale = 0.1, log = TRUE)

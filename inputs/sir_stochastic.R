@@ -5,13 +5,13 @@ initial(time) <- 0
 
 # 1. PARAMETERS ################################################################
 S_ini <- user(1e5) # required in mcState
-I_ini <- user(0.0015) # required in mcState
+I_ini <- user(-2.823909) # required in mcState
 just_beta <- user(0.5)
 just_sigma <- user(0.01) # required in mcState
 
 # 2. INITIAL VALUES ############################################################
 initial(S) <- S_ini
-initial(I) <- I_ini*S_ini
+initial(I) <- (10^(I_ini))*S_ini # trial changing I_ini as log10(I_ini), range = (-4, 0)?
 initial(R) <- 0
 initial(n_SI_daily) <- 0
 initial(n_SI_cumul) <- 0
