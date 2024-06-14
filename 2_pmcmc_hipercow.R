@@ -37,7 +37,7 @@ parallel <- hipercow::hipercow_parallel(method = "parallel",
 
 # Now pmcmc_run is a function:
 # pmcmc_run <- function(n_particles, n_steps)
-id_single <- task_create_expr(pmcmc_run(15376*4, 1e5), # Update n_particles = 32000, n_steps = 1e6?
+id_single <- task_create_expr(pmcmc_run(15376*4, 1e4), # Update n_particles = 32000, n_steps = 1e6?
                               resources = resources
 )
 
@@ -48,7 +48,7 @@ task_log_show(id_single)
 task_info(id_single)
 
 ################################################################################
-id_tuning <- task_create_expr(pmcmc_tuning(15376*4, 1e5), # Update n_particles = 32000, n_steps = 1e6?
+id_tuning <- task_create_expr(pmcmc_tuning(15376*4, 1e4), # Update n_particles = 32000, n_steps = 1e6?
                               resources = resources
 )
 

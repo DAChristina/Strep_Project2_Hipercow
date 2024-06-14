@@ -62,7 +62,7 @@ filter$run(pars)
 
 
 priors <- prepare_priors(pars)
-proposal_matrix <- diag(1, 2)
+proposal_matrix <- diag(1, 3)
 # rownames(proposal_matrix) <- c("just_beta", "just_sigma")
 # colnames(proposal_matrix) <- c("just_beta", "just_sigma")
 
@@ -131,8 +131,10 @@ pmcmc_tuning <- function(n_particles, n_steps){
   new_proposal_matrix <- as.matrix(read.csv("outputs/new_proposal_mtx.csv"))
   new_proposal_matrix <- new_proposal_matrix[, -1]
   new_proposal_matrix <- apply(new_proposal_matrix, 2, as.numeric)
-  colnames(new_proposal_matrix) <- c("just_beta", "just_sigma")
-  rownames(new_proposal_matrix) <- c("just_beta", "just_sigma")
+  new_proposal_matrix <- (new_proposal_matrix + t(new_proposal_matrix)) / 2
+  colnames(new_proposal_matrix) <- c("I_ini", "just_beta", "just_sigma")
+  rownames(new_proposal_matrix) <- c("I_ini", "just_beta", "just_sigma")
+  # isSymmetric(new_proposal_matrix)
   
   tune_mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = new_proposal_matrix, transform = transform)
   

@@ -19,11 +19,11 @@ case_compare <- function(state, observed, pars = NULL) {
 # https://github.com/mrc-ide/mcstate/blob/da9f79e4b5dd421fd2e26b8b3d55c78735a29c27/tests/testthat/test-if2.R#L40
 # https://github.com/mrc-ide/mcstate/issues/184
 parameter_transform <- function(pars) {
-  # I_ini <- pars[["I_ini"]]
+  I_ini <- pars[["I_ini"]]
   just_beta <- pars[["just_beta"]]
   just_sigma <- pars[["just_sigma"]]
   
-  list(#I_ini = I_ini,
+  list(I_ini = I_ini,
        just_beta = just_beta,
        just_sigma = just_sigma)
   
@@ -36,11 +36,11 @@ transform <- function(pars) {
 prepare_parameters <- function(initial_pars, priors, proposal, transform) {
   
   mcmc_pars <- mcstate::pmcmc_parameters$new(
-    list(#mcstate::pmcmc_parameter("I_ini", 0.001, min = 0, max = 0.5,
-                                  #prior = function(s) log(1e-10)), # assume I_ini draws from uniform distribution
-         mcstate::pmcmc_parameter("just_beta", 0.5, min = 0, max = 0.8,
+    list(mcstate::pmcmc_parameter("I_ini", 0.001, min = 0, max = 0.1,
+                                  prior = priors$I_ini),
+         mcstate::pmcmc_parameter("just_beta", 0.5, min = 0, max = 0.6,
                                   prior = priors$just_beta),
-         mcstate::pmcmc_parameter("just_sigma", 0.05, min = 0, max = 1,
+         mcstate::pmcmc_parameter("just_sigma", 0.05, min = 0, max = 0.1,
                                   prior = priors$just_sigma)
     ),
     proposal = proposal,
@@ -51,14 +51,14 @@ prepare_parameters <- function(initial_pars, priors, proposal, transform) {
 prepare_priors <- function(pars) {
   priors <- list()
   
-  # priors$I_ini <- function(s) {
-  #   dunif(s, min = 0, max = 0.5, log = TRUE)
-  # } # assume I_ini draws from uniform distribution
+  priors$I_ini <- function(s) {
+    dgamma(s, shape = 1, scale = 0.1, log = TRUE)
+  }
   priors$just_beta <- function(s) {
     dgamma(s, shape = 1, scale = 0.1, log = TRUE)
   }
   priors$just_sigma <- function(s) {
-    dgamma(s, shape = 1, scale = 1, log = TRUE)
+    dgamma(s, shape = 1, scale = 0.1, log = TRUE)
   }
   priors
 }
