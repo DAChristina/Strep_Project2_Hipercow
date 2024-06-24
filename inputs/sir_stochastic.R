@@ -34,9 +34,10 @@ mu_1 <- user(192/(4064*4745)) # FIXED disease-associated mortality; ratio 192/40
 pi <- user(3.141593) # FIXED
 
 # Dimensions of arrays
-N_age <- user(4) # number of age group
+N_age <- user(5) # number of age group
 
-dim(S_ini) <- N_age
+dim(N_ini) <- N_age
+# dim(S_ini) <- N_age
 dim(A_ini) <- N_age
 dim(D_ini) <- N_age
 dim(R_ini) <- N_age
@@ -50,7 +51,7 @@ dim(n_AD_daily) <- N_age
 dim(n_AD_cumul) <- N_age
 
 dim(m) <- c(N_age, N_age)
-dim(s_ij) <- c(N_age, N_age)
+dim(foi_ij) <- c(N_age, N_age)
 dim(lambda) <- N_age
 dim(delta) <- N_age
 
@@ -69,14 +70,15 @@ dim(n_RS) <- N_age
 
 # 2. INITIAL VALUES ############################################################
 # Initial values (user-defined parameters)
-S_ini[] <- user(6.7e7) # FIXED England's pop size is roughly 67,000,000
+N_ini[] <- user(0) # FIXED England's pop size is roughly 67,000,000
+# S_ini[] <- user(6.7e7)
 A_ini[] <- user(0) # required in mcState
 D_ini[] <- user(0)
-R_ini[] <- 0
+R_ini[] <- user(0)
 
 
 # Age-structured states:
-initial(S[]) <- S_ini[i]
+initial(S[]) <- N_ini[i] -(A_ini[i]+D_ini[i]+R_ini[i])
 initial(A[]) <- A_ini[i]
 initial(D[]) <- D_ini[i]
 initial(R[]) <- 0
@@ -84,7 +86,8 @@ initial(n_AD_daily[]) <- 0
 initial(n_AD_cumul[]) <- 0
 
 # Initial states:
-initial(S_tot) <- sum(S_ini)
+initial(N_tot) <- sum(N_ini)
+initial(S_tot) <- sum(N_ini) -(sum(A_ini)+sum(D_ini)+sum(R_ini))
 initial(A_tot) <- sum(A_ini)
 initial(D_tot) <- sum(D_ini)
 initial(R_tot) <- 0
@@ -97,7 +100,6 @@ initial(n_AD_cumul_tot) <- 0
 # https://mrc-ide.github.io/odin.dust/articles/sir_models.html
 N[] <- S[i] + A[i] + D[i] + R[i]
 m[, ] <- user() # age-structured contact matrix
-s_ij[, ] <- m[i, j] * (A[i] + D[i])/N[i] # contact matrix is multiplied by A & D
 
 beta_temporary <- beta_0*(1+beta_1*sin(2*pi*((time_shift*365)+time)/365))
 # Infant vaccination coverage occurs when PCV13 introduced in April 2010 (day 2648 from 01.01.2003)
@@ -108,16 +110,25 @@ beta_kids <- if (time >= 2648) beta_temporary*(1-vacc_kids) else beta_temporary
 beta_adults <- beta_temporary
 beta_elderly <- beta_temporary*(1-vacc_elderly)
 
+
+foi_ij[1, ] <- beta_kids * m[1, j] * (A[j] + D[j])/N[j] # contact matrix is multiplied by A & D
+foi_ij[2, ] <- beta_adults * m[2, j] * (A[j] + D[j])/N[j]
+foi_ij[3, ] <- beta_adults * m[3, j] * (A[j] + D[j])/N[j]
+foi_ij[4, ] <- beta_adults * m[4, j] * (A[j] + D[j])/N[j]
+foi_ij[5, ] <- beta_elderly * m[5, j] * (A[j] + D[j])/N[j]
+
 # infectious state from Asymtomatic & Diseased individuals
-lambda[1] <- beta_kids*sum(s_ij[1, ])
-lambda[2] <- beta_adults*sum(s_ij[2, ])
-lambda[3] <- beta_adults*sum(s_ij[3, ])
-lambda[4] <- beta_elderly*sum(s_ij[4, ])
+lambda[] <- sum(foi_ij[i, ])
+# lambda[2] <- sum(foi_ij[2, ])
+# lambda[3] <- sum(foi_ij[3, ])
+# lambda[4] <- sum(foi_ij[4, ])
+# lambda[5] <- sum(foi_ij[5, ])
 
 delta[1] <- (10^(log_delta))*UK_calibration_kids
 delta[2] <- (10^(log_delta))*UK_calibration_adults
 delta[3] <- (10^(log_delta))*UK_calibration_adults
 delta[4] <- (10^(log_delta))*UK_calibration_adults
+delta[5] <- (10^(log_delta))*UK_calibration_adults
 
 wane <- (10^(log_wane))
 
@@ -149,6 +160,7 @@ update(n_AD_cumul[]) <- n_AD_cumul[i] + n_AD[i] # no interest in asymptomatic ca
 
 # Core equations of the transitions
 update(time) <- (step + 1) * dt
+update(N_tot) <- sum(N)
 update(S_tot) <- S_tot - sum(n_SA) + sum(n_RS)
 update(A_tot) <- A_tot + sum(n_SA) - (sum(n_AD) + sum(n_AR))
 update(D_tot) <- D_tot + sum(n_AD) - (sum(n_DR) + sum(n_Dd))

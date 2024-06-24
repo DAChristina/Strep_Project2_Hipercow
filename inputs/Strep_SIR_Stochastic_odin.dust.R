@@ -2,8 +2,34 @@
 library(odin.dust)
 gen_sir <- odin.dust::odin_dust("inputs/sir_stochastic.R")
 
+# The contact matrix
+library(socialmixr)
+
+# Create contact_matrix 5 demographic groups:
+# > 5
+# 5-18
+# 19-30
+# 31-64
+# 65+
+contact_5_demographic <- socialmixr::contact_matrix(polymod,
+                                        countries = "United Kingdom",
+                                        age.limits = c(0, 5, 19, 31, 65, 200),
+                                        symmetric = TRUE
+)
+
+transmission <- contact_5_demographic$matrix /
+  rep(contact_5_demographic$demography$population, each = ncol(contact_5_demographic$matrix))
+transmission
+
+
+
+
 # Running the SIR model with dust
-pars <- list(A_ini = c(-1.79180059329553), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
+pars <- list(m = transmission,
+             N_ini = contact_5_demographic$demography$population,
+             A_ini = c(0, -1.79180059329553, 0, 0, 0), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
+             D_ini = c(0, 0, 0, 0, 0),
+             R_ini = c(0, 0, 0, 0, 0),
              time_shift = 0.366346711348848,
              beta_0 = 0.063134635077278,
              beta_1 = 0.161472506104886,
