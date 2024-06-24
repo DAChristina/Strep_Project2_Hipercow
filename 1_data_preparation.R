@@ -57,22 +57,39 @@ for(i in  unique(dat_G$ageGroup)){
   
 }
 
+# Manually extract data per-ageGroup (coz' for loop failed for list)
+df_1_toddler <- data.frame(date = temp_list$`<5`)
+df_1_toddler <- df_1_toddler %>% 
+  dplyr::group_by(date) %>% 
+  dplyr::summarise(cases_1_toddler = n()) %>% 
+  ungroup()
 
-# Data wrangling for every ageGroup
-analysed_list <- list()
-for(i in  names(temp_list)){
-  new_list <- temp_list[[i]]
-  
-  new_list <- new_list %>%
-    dplyr::mutate(date == as.Date(.[[1]]))
-  
-  new_list <- new_list %>%
-    dplyr::group_by(Date) %>%
-    dplyr::summarise(counts_Ser1 = n())
+df_2_518 <- data.frame(date = temp_list$`5-18`)
+df_2_518 <- df_2_518 %>% 
+  dplyr::group_by(date) %>% 
+  dplyr::summarise(cases_2_518 = n()) %>% 
+  ungroup()
 
-  analysed_list[[i]] <- new_list
-}
+df_3_1930 <- data.frame(date = temp_list$`19-30`)
+df_3_1930 <- df_3_1930 %>% 
+  dplyr::group_by(date) %>% 
+  dplyr::summarise(cases_3_1930 = n()) %>% 
+  ungroup()
 
+df_4_3164 <- data.frame(date = temp_list$`31-64`)
+df_4_3164 <- df_4_3164 %>% 
+  dplyr::group_by(date) %>% 
+  dplyr::summarise(cases_4_3164 = n()) %>% 
+  ungroup()
+
+df_5_65plus <- data.frame(date = temp_list$`65+`)
+df_5_65plus <- df_5_65plus %>% 
+  dplyr::group_by(date) %>% 
+  dplyr::summarise(cases_5_65plus = n()) %>% 
+  ungroup()
+
+
+# ALL dates!
 dat_G$Earliest.specimen.date <- as.Date(dat_G$Earliest.specimen.date)
 all_date <- data.frame(allDate = seq.Date(from = min(dat_G$Earliest.specimen.date),
                                           to = max(dat_G$Earliest.specimen.date), 
@@ -80,22 +97,16 @@ all_date <- data.frame(allDate = seq.Date(from = min(dat_G$Earliest.specimen.dat
 all_date$day <- 1:nrow(all_date)
 # Coz the incidence only requires 2 columns called "counts" and "Day" in NUMBERS
 # The counts (but in 0 counts the date are not recorded)
-Natm_ni <- dat_G %>% 
-  dplyr::group_by(Earliest.specimen.date) %>% 
-  dplyr::summarise(counts_Ser1 = n()) %>% 
-  ungroup() #%>% 
+
+compiled <- all_date %>% 
+  dplyr::left_join(df_1_toddler, by =c("allDate" = "date")) %>% 
+  dplyr::left_join(df_2_518, by =c("allDate" = "date")) %>% 
+  dplyr::left_join(df_3_1930, by =c("allDate" = "date")) %>% 
+  dplyr::left_join(df_4_3164, by =c("allDate" = "date")) %>% 
+  dplyr::left_join(df_5_65plus, by =c("allDate" = "date")) %>% 
+  replace(is.na(.), 0) #%>% # NA means no data of meningitis or 30 days death, changed them to 0
 # glimpse()
 
-# Create a new df based on counts per day for Serotype 1, meningitis, and 30 days death
-Natm_n_i <- dplyr::full_join(all_date, Natm_ni,
-                      by = c("allDate" = "Earliest.specimen.date"))
-
-
-
-Natm_n_imD <- dplyr::full_join(Natm_n_im, Natm_n30DDeath,
-                        by = c("allDate" = "Earliest.specimen.date")) %>% 
-  replace(is.na(.), 0) #%>% # NA means no data of meningitis or 30 days death, changed them to 0
-  # glimpse()
 
 # Total population data by age, year for each region
 # SOURCE: https://www.nomisweb.co.uk/
@@ -106,21 +117,21 @@ Natm_n_imD <- dplyr::full_join(Natm_n_im, Natm_n30DDeath,
 # Requires case count per aligned day only
 
 # Viz per-day counts by base R plot
-png("pictures/daily_cases.png", width = 17, height = 12, unit = "cm", res = 1200)
-par(bty = "n", mar = c(3, 3, 1, 1), mgp = c(1.5, 0.5, 0))
-col_imD <- c(counts_Ser1 = "deepskyblue3",
-             counts_meningitis = "green",
-             counts_30DDeath = "maroon")
-plot(Natm_n_imD$allDate, Natm_n_imD$counts_Ser1, type = "b",
-     xlab = "Date (year)", ylab = "Counts",
-     ylim = c(0, max(Natm_n_imD$counts_Ser1)+2),
-     col = col_imD[1], pch = 20)
+png("pictures/daily_cases.png", width = 17, height = 30, unit = "cm", res = 1200)
+par(mfrow= c(5, 1), bty = "n", mar = c(3, 3, 1, 1), mgp = c(1.5, 0.5, 0))
+col_imD <- c(counts_Ser1 = "deepskyblue3")
+for(i in c("cases_1_toddler", "cases_2_518", "cases_3_1930", "cases_4_3164", "cases_5_65plus")){
+  
+  plot(compiled$allDate, compiled[[i]], type = "b",
+       xlab = "Date (year)", ylab = "Counts",
+       ylim = c(0, max(compiled[[i]]+1)),
+       col = col_imD[1], pch = 20,
+       main = paste0(i))
+  
+  legend("topleft", names(col_imD), fill = col_imD, bty = "n")
+}
 
-lines(Natm_n_imD$allDate, Natm_n_imD$counts_meningitis,
-      type = "b", col = col_imD[2], pch = 20)
-lines(Natm_n_imD$allDate, Natm_n_imD$counts_30DDeath,
-      type = "b", col = col_imD[3], pch = 20)
-legend("topleft", names(col_imD), fill = col_imD, bty = "n")
+
 dev.off()
 
 ## 2. Data Fitting #############################################################
@@ -131,16 +142,10 @@ dev.off()
 
 # There is a calibration function in mcstate to fit our model to data.
 # https://mrc-ide.github.io/mcstate/articles/sir_models.html
-incidence <- Natm_n_imD %>% 
-  dplyr::select(day, counts_Ser1) %>% 
-  dplyr::rename(cases = counts_Ser1) # That annoying name
+incidence <- compiled %>% 
+  dplyr::select(-allDate) # ignore allDate
 
 dir.create("inputs")
 write.csv(incidence, "inputs/incidence.csv", row.names = FALSE)
 
-png("pictures/hist_daily_cases.png", width = 17, height = 12, unit = "cm", res = 1200)
-hist(incidence$cases,
-     main = "Histogram of Daily Cases",
-     xlab = "Daily Incidence") # huge zero daily cases occur
-dev.off()
 
