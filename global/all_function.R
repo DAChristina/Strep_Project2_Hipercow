@@ -4,33 +4,28 @@ case_compare <- function(state, observed, pars = NULL) {
   n <- ncol(state)
   
   # incidence based on model's "n_AD_daily" from gen_sir$new(pars = list(), time = 0, n_particles = 1L)$info()
-  incidence_modelled_1_toddler <- state["1_toddler", , drop = TRUE] # n_AD_daily is extracted for each demographic group
-  incidence_modelled_2_518 <- state["2_518", , drop = TRUE]
-  incidence_modelled_3_1930 <- state["3_1930", , drop = TRUE]
-  incidence_modelled_4_3164 <- state["4_3164", , drop = TRUE]
-  incidence_modelled_5_65plus <- state["5_65plus", , drop = TRUE]
+  incidence_modelled_1_toddler <- state[29, , drop = TRUE] # n_AD_daily is extracted for each demographic group
+  incidence_modelled_2_518 <- state[30, , drop = TRUE]
+  incidence_modelled_3_1930 <- state[31, , drop = TRUE]
+  incidence_modelled_4_3164 <- state[32, , drop = TRUE]
+  incidence_modelled_5_65plus <- state[33, , drop = TRUE]
   
   # incidence based on data already in x = observed$cases
-  
-  lamb <- incidence_modelled + rexp(n, exp_noise)
+  # lamb <- incidence_modelled + rexp(n, exp_noise)
   
   loglik_1_toddler <- dpois(x = observed$cases_1_toddler,
                             lambda = incidence_modelled_1_toddler + rexp(n, exp_noise),
                             log = T)
   loglik_2_518 <- dpois(x = observed$cases_2_518,
-                        lambda = lamb,
                         lambda = incidence_modelled_2_518 + rexp(n, exp_noise),
                         log = T)
   loglik_3_1930 <- dpois(x = observed$cases_3_1930,
-                         lambda = lamb,
                          lambda = incidence_modelled_3_1930 + rexp(n, exp_noise),
                          log = T)
   loglik_4_3164 <- dpois(x = observed$cases_4_3164,
-                         lambda = lamb,
                          lambda = incidence_modelled_4_3164 + rexp(n, exp_noise),
                          log = T)
   loglik_5_65plus <- dpois(x = observed$cases_5_65plus,
-                           lambda = lamb,
                            lambda = incidence_modelled_5_65plus + rexp(n, exp_noise),
                            log = T)
   
