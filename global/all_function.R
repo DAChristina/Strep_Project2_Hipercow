@@ -1,17 +1,40 @@
 
 case_compare <- function(state, observed, pars = NULL) {
   exp_noise <- 1e4
+  n <- ncol(state)
   
   # incidence based on model's "n_AD_daily" from gen_sir$new(pars = list(), time = 0, n_particles = 1L)$info()
-  incidence_modelled <- state[6, , drop = TRUE] # n_AD_daily is located at state[6, , ]
+  incidence_modelled_1_toddler <- state["1_toddler", , drop = TRUE] # n_AD_daily is extracted for each demographic group
+  incidence_modelled_2_518 <- state["2_518", , drop = TRUE]
+  incidence_modelled_3_1930 <- state["3_1930", , drop = TRUE]
+  incidence_modelled_4_3164 <- state["4_3164", , drop = TRUE]
+  incidence_modelled_5_65plus <- state["5_65plus", , drop = TRUE]
   
-  # incidence based on data
-  incidence_observed <- observed$cases # daily new cases
+  # incidence based on data already in x = observed$cases
   
-  n <- ncol(state)
   lamb <- incidence_modelled + rexp(n, exp_noise)
-  loglik_cases <- dpois(x = incidence_observed, lambda = lamb, log = T)
   
+  loglik_1_toddler <- dpois(x = observed$cases_1_toddler,
+                            lambda = incidence_modelled_1_toddler + rexp(n, exp_noise),
+                            log = T)
+  loglik_2_518 <- dpois(x = observed$cases_2_518,
+                        lambda = lamb,
+                        lambda = incidence_modelled_2_518 + rexp(n, exp_noise),
+                        log = T)
+  loglik_3_1930 <- dpois(x = observed$cases_3_1930,
+                         lambda = lamb,
+                         lambda = incidence_modelled_3_1930 + rexp(n, exp_noise),
+                         log = T)
+  loglik_4_3164 <- dpois(x = observed$cases_4_3164,
+                         lambda = lamb,
+                         lambda = incidence_modelled_4_3164 + rexp(n, exp_noise),
+                         log = T)
+  loglik_5_65plus <- dpois(x = observed$cases_5_65plus,
+                           lambda = lamb,
+                           lambda = incidence_modelled_5_65plus + rexp(n, exp_noise),
+                           log = T)
+  
+  loglik_cases <- loglik_1_toddler+loglik_2_518+loglik_3_1930+loglik_4_3164+loglik_5_65plus
   return(loglik_cases)
 }
 

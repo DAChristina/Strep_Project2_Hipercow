@@ -14,6 +14,10 @@ log_wane <- user(0)
 # Vaccination:
 # https://webarchive.nationalarchives.gov.uk/ukgwa/20211105111851mp_/https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/540290/hpr2416_ppv.pdf
 # https://fingertips.phe.org.uk/search/PPV#page/4/gid/1/pat/159/par/K02000001/ati/15/are/E92000001/iid/30313/age/27/sex/4/cat/-1/ctp/-1/yrr/1/cid/4/tbm/1
+
+# For nested binom, see:
+# https://github.com/mrc-ide/odin-dust-tutorial/blob/94081debe9b77ae730f3026df0d53ad6a9f95916/models/sir_age_vacc.R
+
 vacc_kids <- 0.9*0.862 # FIXED PCV13 vaccination coverage * efficacy * proportion of kids below 2 y.o.
 vacc_elderly <- 0.7*0.57 # FIXED PPV23 vaccination coverage * efficacy
 # ratio of vaccinated elderly for >64 y.o. people, averaged 69.7243% ~ 70%
@@ -71,7 +75,7 @@ dim(n_RS) <- N_age
 # 2. INITIAL VALUES ############################################################
 # Initial values (user-defined parameters)
 N_ini[] <- user(0) # FIXED England's pop size is roughly 67,000,000
-# S_ini[] <- user(6.7e7)
+# S_ini[] <- user(0)
 A_ini[] <- user(0) # required in mcState
 D_ini[] <- user(0)
 R_ini[] <- user(0)

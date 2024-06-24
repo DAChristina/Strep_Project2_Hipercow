@@ -21,13 +21,11 @@ dat_G <- dat %>%
            year >= 2011 ~ "PCV13",
            TRUE ~ NA_character_
          ),
-         ageGroup = case_when(
-           AGEYR < 2 ~ "<2",
-           AGEYR >= 2 & AGEYR < 5 ~ "2-4",
-           AGEYR >= 5 & AGEYR < 15 ~ "5-14",
-           AGEYR >= 15 & AGEYR < 31 ~ "15-30", # Edit the Age-band into 15-30 & 31-44
-           AGEYR >= 31 & AGEYR < 45 ~ "31-44", # Edit the Age-band into 15-30 & 31-44
-           AGEYR >= 45 & AGEYR < 65 ~ "45-64",
+         ageGroup = case_when( # edit 5 age bands
+           AGEYR < 5 ~ "<5",
+           AGEYR >= 5 & AGEYR < 19 ~ "5-18",
+           AGEYR >= 19 & AGEYR < 31 ~ "19-30",
+           AGEYR >= 31 & AGEYR < 65 ~ "31-64",
            AGEYR >= 65 ~ "65+",
            is.na(AGEYR) ~ "Unknown" # 16 IDs have no AGEYR
            # TRUE ~ "Unknown" 
@@ -51,6 +49,25 @@ dat_G <- dat %>%
 
 # Basic case count data without age structure or regions
 # Create all hypothetical recorded disease date
+
+# Separate data based on ageGroup
+temp_list <- list()
+for(i in  unique(dat_G$ageGroup)){
+  temp_list[i] <- dat_G[dat_G$ageGroup == i, "Earliest.specimen.date"]
+  
+}
+
+
+# Data wrangling for every ageGroup
+analysed_list <- list()
+for(i in  names(temp_list)){
+  new_list <- temp_list[[i]] %>%
+    dplyr::group_by() %>%
+    dplyr::summarise(counts_Ser1 = n())
+
+  analysed_list[[i]] <- new_list
+}
+
 dat_G$Earliest.specimen.date <- as.Date(dat_G$Earliest.specimen.date)
 all_date <- data.frame(allDate = seq.Date(from = min(dat_G$Earliest.specimen.date),
                                           to = max(dat_G$Earliest.specimen.date), 
@@ -64,27 +81,11 @@ Natm_ni <- dat_G %>%
   ungroup() #%>% 
 # glimpse()
 
-Natm_nmeningitis <- dat_G %>% 
-  dplyr::filter(MeningitisFlag == "Y") %>% 
-  dplyr::group_by(Earliest.specimen.date) %>% 
-  dplyr::summarise(counts_meningitis = n()) %>% 
-  ungroup() #%>% 
-# glimpse()
-
-Natm_n30DDeath <- dat_G %>% 
-  dplyr::filter(`30daydeath` == "D") %>% 
-  dplyr::group_by(Earliest.specimen.date) %>% 
-  dplyr::summarise(counts_30DDeath = n()) %>% 
-  ungroup() #%>% 
-# glimpse()
-
-
 # Create a new df based on counts per day for Serotype 1, meningitis, and 30 days death
 Natm_n_i <- dplyr::full_join(all_date, Natm_ni,
                       by = c("allDate" = "Earliest.specimen.date"))
 
-Natm_n_im <- dplyr::full_join(Natm_n_i, Natm_nmeningitis,
-                       by = c("allDate" = "Earliest.specimen.date"))
+
 
 Natm_n_imD <- dplyr::full_join(Natm_n_im, Natm_n30DDeath,
                         by = c("allDate" = "Earliest.specimen.date")) %>% 

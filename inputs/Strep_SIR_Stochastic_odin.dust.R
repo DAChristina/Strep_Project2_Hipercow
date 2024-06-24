@@ -21,13 +21,15 @@ transmission <- contact_5_demographic$matrix /
   rep(contact_5_demographic$demography$population, each = ncol(contact_5_demographic$matrix))
 transmission
 
+N_age <- length(contact_5_demographic$age.limits)
 
 
 
 # Running the SIR model with dust
 pars <- list(m = transmission,
-             N_ini = contact_5_demographic$demography$population,
-             A_ini = c(0, -1.79180059329553, 0, 0, 0), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
+             N_ini = c(6.7e7/5, 6.7e7/5, 6.7e7/5, 6.7e7/5, 6.7e7/5),
+             S_ini = contact_5_demographic$demography$population,
+             A_ini = c(0, 2, 0, 0, 0), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
              D_ini = c(0, 0, 0, 0, 0),
              R_ini = c(0, 0, 0, 0, 0),
              time_shift = 0.366346711348848,
@@ -102,6 +104,22 @@ matlines(incidence$day, incidence$cases, type = "l", col = "steelblue")
 legend("left", lwd = 1, col = cols, legend = names(cols), bty = "n")
 max(x[5,,]) # Check max n_AD_daily
 max(x[3,,]) # Check max D
+
+# Plotting the trajectories
+par(mfrow = c(2,4), oma=c(2,3,0,0))
+for (i in 1:N_age) {
+  par(mar = c(3, 4, 2, 0.5))
+  cols <- c(S = "#8c8cd9", A = "darkred", D = "orange", R = "#999966", n_AD_daily = "#cc0099", n_AD_cumul = "green")
+  matplot(time, t(x[i + 3,, ]), type = "l", # Offset to access numbers in age compartment
+          xlab = "", ylab = "", yaxt="none", main = paste0("Age ", contact_5_demographic$demography$age.group[i]),
+          col = cols[["S"]], lty = 1, ylim=range(x[-1:-3,,]))
+  matlines(time, t(x[i + 3 + N_age, , ]), col = cols[["I"]], lty = 1)
+  matlines(time, t(x[i + 3 + 2*N_age, , ]), col = cols[["R"]], lty = 1)
+  legend("right", lwd = 1, col = cols, legend = names(cols), bty = "n")
+  axis(2, las =2)
+}
+mtext("Number of individuals", side=2,line=1, outer=T)
+mtext("Time", side = 1, line = 0, outer =T)
 
 # Toy data creation ############################################################
 # glimpse(x)
