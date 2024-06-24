@@ -61,8 +61,13 @@ for(i in  unique(dat_G$ageGroup)){
 # Data wrangling for every ageGroup
 analysed_list <- list()
 for(i in  names(temp_list)){
-  new_list <- temp_list[[i]] %>%
-    dplyr::group_by() %>%
+  new_list <- temp_list[[i]]
+  
+  new_list <- new_list %>%
+    dplyr::mutate(date == as.Date(.[[1]]))
+  
+  new_list <- new_list %>%
+    dplyr::group_by(Date) %>%
     dplyr::summarise(counts_Ser1 = n())
 
   analysed_list[[i]] <- new_list
