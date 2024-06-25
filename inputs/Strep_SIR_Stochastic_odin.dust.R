@@ -28,8 +28,9 @@ N_age <- length(age.limits)
 
 # Running the SIR model with dust
 pars <- list(m = transmission,
-             N_ini = contact_5_demographic$demography$population,
-             A_ini = c(500, 500, 500, 500, 500), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
+             N_ini = contact_5_demographic$demography$population, 
+             init_A_ini = 1000,
+             A_ini = round(init_A_ini*contact_5_demographic$participants$proportion), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
              D_ini = c(0, 0, 0, 0, 0),
              R_ini = c(0, 0, 0, 0, 0),
              time_shift = 0.366346711348848,
@@ -110,7 +111,7 @@ par(mfrow = c(2,3), oma=c(2,3,0,0))
 for (i in 1:N_age) {
   par(mar = c(3, 4, 2, 0.5))
   cols <- c(S = "#8c8cd9", A = "darkred", D = "orange", R = "#999966", n_AD_daily = "#cc0099", n_AD_cumul = "green")
-  matplot(time, t(x[i + 6 + 2*N_age, , ]), type = "l", # Offset to access numbers in age compartment
+  matplot(time, t(x[i + 5 + 2*N_age, , ]), type = "l", # Offset to access numbers in age compartment
           xlab = "", ylab = "", yaxt="none", main = paste0("Age ", contact_5_demographic$demography$age.group[i]),
           col = cols[["n_AD_daily"]], lty = 1)#, ylim=range(x[-1:-3,,]))
   # matlines(time, t(x[i + 3 + N_age, , ]), col = cols[["A"]], lty = 1)

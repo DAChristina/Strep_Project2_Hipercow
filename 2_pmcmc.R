@@ -37,8 +37,8 @@ gen_sir <- odin.dust::odin_dust("inputs/sir_stochastic.R")
 
 # This is part of sir odin model:
 pars <- list(m = transmission,
-             N_ini = c(6.7e7/5, 6.7e7/5, 6.7e7/5, 6.7e7/5, 6.7e7/5),
-             S_ini = contact_5_demographic$demography$population,
+             N_ini =  contact_5_demographic$demography$population,
+             # S_ini = contact_5_demographic$demography$population,
              A_ini = c(0, 2, 0, 0, 0), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
              D_ini = c(0, 0, 0, 0, 0),
              R_ini = c(0, 0, 0, 0, 0),

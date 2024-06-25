@@ -74,11 +74,12 @@ dim(n_RS) <- N_age
 
 # 2. INITIAL VALUES ############################################################
 # Initial values (user-defined parameters)
-N_ini[] <- user(0) # FIXED England's pop size is roughly 67,000,000
+N_ini[] <- user() # FIXED England's pop size is roughly 67,000,000
 # S_ini[] <- user(0)
-A_ini[] <- user(0) # required in mcState
-D_ini[] <- user(0)
-R_ini[] <- user(0)
+init_A_ini <- user()
+A_ini[] <- user() # required in mcState
+D_ini[] <- user()
+R_ini[] <- user()
 
 
 # Age-structured states:
@@ -114,7 +115,6 @@ beta_kids <- if (time >= 2648) beta_temporary*(1-vacc_kids) else beta_temporary
 beta_adults <- beta_temporary
 beta_elderly <- beta_temporary*(1-vacc_elderly)
 
-
 foi_ij[1, ] <- beta_kids * m[1, j] * (A[j] + D[j])/N[j] # contact matrix is multiplied by A & D
 foi_ij[2, ] <- beta_adults * m[2, j] * (A[j] + D[j])/N[j]
 foi_ij[3, ] <- beta_adults * m[3, j] * (A[j] + D[j])/N[j]
@@ -122,11 +122,11 @@ foi_ij[4, ] <- beta_adults * m[4, j] * (A[j] + D[j])/N[j]
 foi_ij[5, ] <- beta_elderly * m[5, j] * (A[j] + D[j])/N[j]
 
 # infectious state from Asymtomatic & Diseased individuals
-lambda[] <- sum(foi_ij[i, ])
-# lambda[2] <- sum(foi_ij[2, ])
-# lambda[3] <- sum(foi_ij[3, ])
-# lambda[4] <- sum(foi_ij[4, ])
-# lambda[5] <- sum(foi_ij[5, ])
+lambda[1] <- sum(foi_ij[1, ])
+lambda[2] <- sum(foi_ij[2, ])
+lambda[3] <- sum(foi_ij[3, ])
+lambda[4] <- sum(foi_ij[4, ])
+lambda[5] <- sum(foi_ij[5, ])
 
 delta[1] <- (10^(log_delta))*UK_calibration_kids
 delta[2] <- (10^(log_delta))*UK_calibration_adults
