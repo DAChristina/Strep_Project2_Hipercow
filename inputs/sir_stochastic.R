@@ -9,7 +9,6 @@ initial(time) <- 0
 time_shift <- user(0)
 beta_0 <- user(0)
 beta_1 <- user(0)
-log_wane <- user(0)
 
 # Vaccination:
 # https://webarchive.nationalarchives.gov.uk/ukgwa/20211105111851mp_/https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/540290/hpr2416_ppv.pdf
@@ -31,10 +30,11 @@ UK_calibration_kids <- user(1.07638532472038) # FIXED (Lochen et al., 2022)
 UK_calibration_adults <- user(0.536936186788821) # FIXED (Lochen et al., 2022)
 
 log_delta <- user(0) # required in mcState
-sigma_1 <- user(1/15.75) # FIXED per-day, carriage duration (95% CI 7.88-31.49) (Serotype 1) (Chaguza et al., 2021)
-sigma_2 <- user(0)
+hypo_sigma_1 <- (1/15.75) # FIXED per-day, carriage duration (95% CI 7.88-31.49) (Serotype 1) (Chaguza et al., 2021)
+psi <- user(0) # Immunity differences between children & adults
+sigma_2 <- user(1) # Assumed acute phase, 1 day
 mu_0 <- user(0) # background mortality, assumed as closed system
-mu_1 <- user(192/(4064*4745)) # FIXED disease-associated mortality; ratio 192/4064 in 4745 days
+# mu_1 <- user(192/(4064*4745)) # FIXED disease-associated mortality; ratio 192/4064 in 4745 days
 pi <- user(3.141593) # FIXED
 
 # Dimensions of arrays
@@ -58,6 +58,7 @@ dim(m) <- c(N_age, N_age)
 dim(foi_ij) <- c(N_age, N_age)
 dim(lambda) <- N_age
 dim(delta) <- N_age
+dim(sigma_1) <- N_age
 
 dim(p_SA) <- N_age
 dim(p_Asym) <- N_age
@@ -76,7 +77,9 @@ dim(n_RS) <- N_age
 # Initial values (user-defined parameters)
 N_ini[] <- user() # FIXED England's pop size is roughly 67,000,000
 # S_ini[] <- user(0)
-init_A_ini <- user()
+
+# log_A_ini <- user()
+# init_A_ini <- 10^(log_A_ini)
 A_ini[] <- user() # required in mcState
 D_ini[] <- user()
 R_ini[] <- user()
@@ -86,7 +89,7 @@ R_ini[] <- user()
 initial(S[]) <- N_ini[i] -(A_ini[i]+D_ini[i]+R_ini[i])
 initial(A[]) <- A_ini[i]
 initial(D[]) <- D_ini[i]
-initial(R[]) <- 0
+initial(R[]) <- R_ini[i]
 initial(n_AD_daily[]) <- 0
 initial(n_AD_cumul[]) <- 0
 
@@ -95,7 +98,7 @@ initial(N_tot) <- sum(N_ini)
 initial(S_tot) <- sum(N_ini) -(sum(A_ini)+sum(D_ini)+sum(R_ini))
 initial(A_tot) <- sum(A_ini)
 initial(D_tot) <- sum(D_ini)
-initial(R_tot) <- 0
+initial(R_tot) <- sum(R_ini)
 initial(n_AD_daily_tot) <- 0
 initial(n_AD_cumul_tot) <- 0
 
@@ -134,20 +137,30 @@ delta[3] <- (10^(log_delta))*UK_calibration_adults
 delta[4] <- (10^(log_delta))*UK_calibration_adults
 delta[5] <- (10^(log_delta))*UK_calibration_adults
 
+max_wane <- (-0.5)
+min_wane <- (-4)
+scaled_wane <- user(0)
+log_wane <- scaled_wane*(max_wane-min_wane)+min_wane # scaled_wane*(max_wane−min_wane)+min_wane; rescaled using (wane-wane_min)/(wane_max-wane_min)
 wane <- (10^(log_wane))
+
+sigma_1[1] <- hypo_sigma_1
+sigma_1[2] <- psi*hypo_sigma_1
+sigma_1[3] <- psi*hypo_sigma_1
+sigma_1[4] <- psi*hypo_sigma_1
+sigma_1[5] <- psi*hypo_sigma_1
 
 # Individual probabilities of transition
 p_SA[] <- 1- exp(-lambda[i] * dt)
-p_Asym[] <- 1- exp(-(delta[i]+sigma_1) * dt)
-p_AD[] <- 1- exp(-(delta[i]/(delta[i]+sigma_1) * dt))
-p_Dis <- 1- exp(-(sigma_2+mu_0+mu_1) * dt)
-p_DR <- 1- exp(-(sigma_2/(sigma_2+mu_0+mu_1)) * dt)
+p_Asym[] <- 1- exp(-(delta[i]+sigma_1[i]) * dt)
+p_AD[] <- 1- exp(-(delta[i]/(delta[i]+sigma_1[i]) * dt))
+p_Dis <- 1- exp(-(sigma_2+mu_0) * dt)
+p_DR <- 1- exp(-(sigma_2/(sigma_2+mu_0)) * dt)
 p_RS <- 1- exp(-wane * dt)
 
 # Draws for numbers changing between compartments
-n_SA[] <- rbinom(S[i], sum(p_SA[i])) # why sum???
-n_Asym[] <- rbinom(A[i], sum(p_Asym[i])) # n_Asym <- n_AD + n_AR cause cyclic dependency error
-n_AD[] <- rbinom(n_Asym[i], sum(p_AD[i]))
+n_SA[] <- rbinom(S[i], p_SA[i]) # why sum in vignette???
+n_Asym[] <- rbinom(A[i], p_Asym[i]) # n_Asym <- n_AD + n_AR cause cyclic dependency error
+n_AD[] <- rbinom(n_Asym[i], p_AD[i])
 n_AR[] <- n_Asym[i] - n_AD[i]
 n_Dis[] <- rbinom(D[i], p_Dis)
 n_DR[] <- rbinom(n_Dis[i], p_DR)

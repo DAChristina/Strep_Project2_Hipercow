@@ -11,9 +11,12 @@ library(socialmixr)
 # 19-30
 # 31-64
 # 65+
+age.limits = c(0, 5, 19, 31, 65)
+N_age <- length(age.limits)
+
 contact_5_demographic <- socialmixr::contact_matrix(polymod,
                                         countries = "United Kingdom",
-                                        age.limits = c(0, 5, 19, 31, 65, 200),
+                                        age.limits = age.limits,
                                         symmetric = TRUE
 )
 
@@ -21,24 +24,21 @@ transmission <- contact_5_demographic$matrix /
   rep(contact_5_demographic$demography$population, each = ncol(contact_5_demographic$matrix))
 transmission
 
-age.limits = c(0, 5, 19, 31, 65, 200)
-N_age <- length(age.limits)
-
-
+# init_A_ini <- 0.01479864
 
 # Running the SIR model with dust
 pars <- list(m = transmission,
-             N_ini = contact_5_demographic$demography$population, 
-             init_A_ini = 1000,
-             A_ini = round(init_A_ini*contact_5_demographic$participants$proportion), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
+             N_ini = contact_5_demographic$demography$population,
+             # init_A_ini = 1e-3,
+             A_ini = round(0.16479864*contact_5_demographic$demography$population), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
              D_ini = c(0, 0, 0, 0, 0),
              R_ini = c(0, 0, 0, 0, 0),
              time_shift = 0.366346711348848,
              beta_0 = 0.063134635077278,
              beta_1 = 0.161472506104886,
              log_wane = (-0.210952113801415),
-             log_delta = (-6.03893492453891), # will be fitted to logN(-10, 0.7)
-             sigma_1 = (1/15.75),
+             log_delta = (-4.03893492453891), # will be fitted to logN(-10, 0.7)
+             psi = (0.5),
              sigma_2 = (1)
 ) # Serotype 1 is categorised to have the lowest carriage duration
 
@@ -107,15 +107,16 @@ max(x[5,,]) # Check max n_AD_daily
 max(x[3,,]) # Check max D
 
 # Plotting the trajectories
+# See gen_sir$new(pars = pars, time = 0, n_particles = 1L)$info()
 par(mfrow = c(2,3), oma=c(2,3,0,0))
 for (i in 1:N_age) {
   par(mar = c(3, 4, 2, 0.5))
   cols <- c(S = "#8c8cd9", A = "darkred", D = "orange", R = "#999966", n_AD_daily = "#cc0099", n_AD_cumul = "green")
-  matplot(time, t(x[i + 5 + 2*N_age, , ]), type = "l", # Offset to access numbers in age compartment
+  matplot(time, t(x[i + 7 + 4*N_age, , ]), type = "l", # Offset to access numbers in age compartment
           xlab = "", ylab = "", yaxt="none", main = paste0("Age ", contact_5_demographic$demography$age.group[i]),
           col = cols[["n_AD_daily"]], lty = 1)#, ylim=range(x[-1:-3,,]))
-  # matlines(time, t(x[i + 3 + N_age, , ]), col = cols[["A"]], lty = 1)
-  # matlines(time, t(x[i + 3 + 2*N_age, , ]), col = cols[["R"]], lty = 1)
+  # matlines(time, t(x[i + 7 + N_age, , ]), col = cols[["A"]], lty = 1)
+  # matlines(time, t(x[i + 7 + 2*N_age, , ]), col = cols[["R"]], lty = 1)
   legend("right", lwd = 1, col = cols, legend = names(cols), bty = "n")
   axis(2, las =2)
 }

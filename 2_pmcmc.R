@@ -3,7 +3,8 @@ library(mcstate)
 library(coda)
 library(odin.dust)
 library(dust)
-# library(GGally)
+library(GGally)
+library(socialmixr)
 
 source("global/all_function.R") # Collected functions stored here!
 
@@ -28,6 +29,26 @@ sir_data <- mcstate::particle_filter_data(data = incidence,
 # Annotate the data so that it is suitable for the particle filter to use
 rmarkdown::paged_table(sir_data)
 
+# Contact matrix:
+# Create contact_matrix 5 demographic groups:
+# > 5
+# 5-18
+# 19-30
+# 31-64
+# 65+
+age.limits = c(0, 5, 19, 31, 65)
+N_age <- length(age.limits)
+
+contact_5_demographic <- socialmixr::contact_matrix(polymod,
+                                                    countries = "United Kingdom",
+                                                    age.limits = age.limits,
+                                                    symmetric = TRUE
+)
+
+transmission <- contact_5_demographic$matrix /
+  rep(contact_5_demographic$demography$population, each = ncol(contact_5_demographic$matrix))
+transmission
+
 
 ## 2a. Model Load ##############################################################
 # The model below is stochastic, closed system SADR model that I have created before
@@ -37,19 +58,18 @@ gen_sir <- odin.dust::odin_dust("inputs/sir_stochastic.R")
 
 # This is part of sir odin model:
 pars <- list(m = transmission,
-             N_ini =  contact_5_demographic$demography$population,
-             # S_ini = contact_5_demographic$demography$population,
-             A_ini = c(0, 2, 0, 0, 0), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
-             D_ini = c(0, 0, 0, 0, 0),
-             R_ini = c(0, 0, 0, 0, 0),
+             N_ini = contact_5_demographic$demography$population,
+             D_ini = c(0,0,0,0,0),
+             R_ini = c(0,0,0,0,0),
+             # we will parameterise pars below:
+             A_ini = round(0.16479864*contact_5_demographic$demography$population), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
              time_shift = 0.366346711348848,
              beta_0 = 0.063134635077278,
              beta_1 = 0.161472506104886,
-             log_wane = (-0.210952113801415),
-             log_delta = (-6.03893492453891), # will be fitted to logN(-10, 0.7)
-             sigma_1 = (1/15.75),
-             sigma_2 = (1)
-             )# Serotype 1 is categorised to have the lowest carriage duration
+             scaled_wane = (-0.210952113801415),
+             log_delta = (-4.03893492453891), # will be fitted to logN(-10, 0.7)
+             psi = (0.5)
+)
 
 # https://mrc-ide.github.io/odin-dust-tutorial/mcstate.html#/the-model-over-time
 n_particles <- 50 # Trial n_particles = 50
@@ -84,12 +104,15 @@ filter$run(pars)
 # Update n_particles based on calculation in 4 cores with var(x) ~ 267: 32000
 
 priors <- prepare_priors(pars)
-proposal_matrix <- diag(200, 6)
+proposal_matrix <- diag(200, 7)
 proposal_matrix <- (proposal_matrix + t(proposal_matrix)) / 2
-rownames(proposal_matrix) <- c("log_A_ini", "time_shift", "beta_0", "beta_1", "log_wane", "log_delta")
-colnames(proposal_matrix) <- c("log_A_ini", "time_shift", "beta_0", "beta_1", "log_wane", "log_delta")
+# rownames(proposal_matrix) <- c("A_ini_1", "A_ini_2", "A_ini_3", "A_ini_4", "A_ini_5", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
+# colnames(proposal_matrix) <- c("A_ini_1", "A_ini_2", "A_ini_3", "A_ini_4", "A_ini_5", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
+rownames(proposal_matrix) <- c("A_ini", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
+colnames(proposal_matrix) <- c("A_ini", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
 
-mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = proposal_matrix, transform = transform)
+
+mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = proposal_matrix, transform = parameter_transform)
 
 # n_steps <- 100 #1e6
 
@@ -153,8 +176,8 @@ pmcmc_run_plus_tuning <- function(n_particles, n_steps){
   new_proposal_matrix <- apply(new_proposal_matrix, 2, as.numeric)
   new_proposal_matrix <- new_proposal_matrix/10 # Lilith's suggestion
   new_proposal_matrix <- (new_proposal_matrix + t(new_proposal_matrix)) / 2
-  rownames(new_proposal_matrix) <- c("log_A_ini", "time_shift", "beta_0", "beta_1", "log_wane", "log_delta")
-  colnames(new_proposal_matrix) <- c("log_A_ini", "time_shift", "beta_0", "beta_1", "log_wane", "log_delta")
+  rownames(new_proposal_matrix) <- c("A_ini_1", "A_ini_2", "A_ini_3", "A_ini_4", "A_ini_5", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
+  colnames(new_proposal_matrix) <- c("A_ini_1", "A_ini_2", "A_ini_3", "A_ini_4", "A_ini_5", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
   # isSymmetric(new_proposal_matrix)
   
   tune_mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = new_proposal_matrix, transform = transform)
