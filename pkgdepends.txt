@@ -9,3 +9,6 @@ mcstate
 odin.dust
 coda
 dust
+
+epiforecasts/socialmixr
+ggobi/ggally
