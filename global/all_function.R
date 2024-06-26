@@ -38,36 +38,50 @@ case_compare <- function(state, observed, pars = NULL) {
 # https://github.com/mrc-ide/mcstate/blob/da9f79e4b5dd421fd2e26b8b3d55c78735a29c27/tests/testthat/test-if2.R#L40
 # https://github.com/mrc-ide/mcstate/issues/184
 parameter_transform <- function(transmission) {
-  
+  age.limits = c(0, 5, 19, 31, 65)
+  N_age <- length(age.limits)
   contact_5_demographic <- socialmixr::contact_matrix(polymod,
                                                       countries = "United Kingdom",
                                                       age.limits = age.limits,
                                                       symmetric = TRUE
   )
   
-  transform <- function(pars) {
-    A_ini <- pars[["A_ini"]]
+  transmission <- contact_5_demographic$matrix /
+    rep(contact_5_demographic$demography$population, each = ncol(contact_5_demographic$matrix))
+  transmission
+  
+  transform <- function(pars){
+    # re-define pars with pars that I really wanna fit only
+    A_ini_1 <- pars[["A_ini"]][1]
+    A_ini_2 <- pars[["A_ini"]][2]
+    A_ini_3 <- pars[["A_ini"]][3]
+    A_ini_4 <- pars[["A_ini"]][4]
+    A_ini_5 <- pars[["A_ini"]][5]
     time_shift <- pars[["time_shift"]]
     beta_0 <- pars[["beta_0"]]
     beta_1 <- pars[["beta_1"]]
-    log_wane <- pars[["log_wane"]]
+    scaled_wane <- pars[["scaled_wane"]]
     log_delta <- pars[["log_delta"]]
     psi <- pars[["psi"]]
     # sigma_2 <- pars[["sigma_2"]]
     
-    pars <- as.list(A_ini = A_ini,
-                    time_shift = time_shift,
-                    beta_0 = beta_0,
-                    beta_1 = beta_1,
-                    log_wane = log_wane,
-                    log_delta = log_delta,
-                    psi = psi
-                    # sigma_2 = sigma_2
+    pars <- list(A_ini_1 = A_ini_1,
+                 A_ini_2 = A_ini_2,
+                 A_ini_3 = A_ini_3,
+                 A_ini_4 = A_ini_4,
+                 A_ini_5 = A_ini_5,
+                 time_shift = time_shift,
+                 beta_0 = beta_0,
+                 beta_1 = beta_1,
+                 scaled_wane = scaled_wane,
+                 log_delta = log_delta,
+                 psi = psi
+                 # sigma_2 = sigma_2
     )
-    pars$N_ini <- contact_5_demographic$demography$population
-    pars$A_ini <- 0.1*contact_5_demographic$demography$population
-    pars$m_step <- array(contact_5_demographic$matrix, c(2, 2, max(idx)))
-    pars$m_step[, , idx] <- pars$m_step[, , idx] * pars$phi
+    # But I wanna define A_ini based on 5 different pars:
+    pars$A_ini <- c(pars$A_ini_1, pars$A_ini_2, pars$A_ini_3, pars$A_ini_4, pars$A_ini_5)
+    pars$N_ini <-  contact_5_demographic$demography$population
+    pars$m <- transmission
     
     pars
   }
@@ -75,13 +89,20 @@ parameter_transform <- function(transmission) {
   transform
 }
 
-
+transform <- parameter_transform(transmission)
 
 prepare_parameters <- function(initial_pars, priors, proposal, transform) {
   
   mcmc_pars <- mcstate::pmcmc_parameters$new(
-    list(mcstate::pmcmc_varied_parameter("A_ini",
-                                         initial = c(100, 100, 100, 100, 100),
+    list(mcstate::pmcmc_parameter("A_ini_1", 100, min = 10, max = 10000,
+                                  prior = priors$A_ini),
+         mcstate::pmcmc_parameter("A_ini_2", 100, min = 10, max = 10000,
+                                  prior = priors$A_ini),
+         mcstate::pmcmc_parameter("A_ini_3", 100, min = 10, max = 10000,
+                                  prior = priors$A_ini),
+         mcstate::pmcmc_parameter("A_ini_4", 100, min = 10, max = 10000,
+                                  prior = priors$A_ini),
+         mcstate::pmcmc_parameter("A_ini_5", 100, min = 10, max = 10000,
                                   prior = priors$A_ini),
          mcstate::pmcmc_parameter("time_shift", 0.2, min = 0, max = 1,
                                   prior = priors$time_shift),
@@ -89,8 +110,8 @@ prepare_parameters <- function(initial_pars, priors, proposal, transform) {
                                   prior = priors$beta_0),
          mcstate::pmcmc_parameter("beta_1", 0.07, min = 0, max = 0.8,
                                   prior = priors$beta_1),
-         mcstate::pmcmc_parameter("log_wane", (-2.823909), min = (-6), max = 0.7,
-                                  prior = priors$log_wane),
+         mcstate::pmcmc_parameter("scaled_wane", (0.5), min = (0), max = 1,
+                                  prior = priors$scaled_wane),
          mcstate::pmcmc_parameter("log_delta", (-4.98), min = (-10), max = 0.7,
                                   prior = priors$log_delta),
          mcstate::pmcmc_parameter("psi", (1), min = (0), max = 1,
@@ -106,13 +127,9 @@ prepare_parameters <- function(initial_pars, priors, proposal, transform) {
 prepare_priors <- function(pars) {
   priors <- list()
   
-  priors$A_ini <- list(
-    function(s) dunif(s, min = (0), max = 06.7e7, log = TRUE),
-    function(s) dunif(s, min = (0), max = 06.7e7, log = TRUE),
-    function(s) dunif(s, min = (0), max = 06.7e7, log = TRUE),
-    function(s) dunif(s, min = (0), max = 06.7e7, log = TRUE),
-    function(s) dunif(s, min = (0), max = 06.7e7, log = TRUE),
-  )
+  priors$A_ini <- function(s) {
+    dunif(s, min = 10, max = 10000, log = TRUE)
+  }
   priors$time_shift <- function(s) {
     dunif(s, min = 0, max = 1, log = TRUE)
   }
@@ -122,8 +139,8 @@ prepare_priors <- function(pars) {
   priors$beta_1 <- function(s) {
     dgamma(s, shape = 1, scale = 0.1, log = TRUE)
   }
-  priors$log_wane <- function(s) {
-    dunif(s, min = (-10), max = 0.7, log = TRUE)
+  priors$scaled_wane <- function(s) {
+    dbeta(s, shape1 = 1.25, shape2 = 1.25, log = TRUE)
   }
   priors$log_delta <- function(s) {
     dunif(s, min = (-10), max = 0.7, log = TRUE)

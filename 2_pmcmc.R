@@ -104,15 +104,12 @@ filter$run(pars)
 # Update n_particles based on calculation in 4 cores with var(x) ~ 267: 32000
 
 priors <- prepare_priors(pars)
-proposal_matrix <- diag(200, 7)
+proposal_matrix <- diag(200, 11)
 proposal_matrix <- (proposal_matrix + t(proposal_matrix)) / 2
-# rownames(proposal_matrix) <- c("A_ini_1", "A_ini_2", "A_ini_3", "A_ini_4", "A_ini_5", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
-# colnames(proposal_matrix) <- c("A_ini_1", "A_ini_2", "A_ini_3", "A_ini_4", "A_ini_5", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
-rownames(proposal_matrix) <- c("A_ini", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
-colnames(proposal_matrix) <- c("A_ini", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
+rownames(proposal_matrix) <- c("A_ini_1", "A_ini_2", "A_ini_3", "A_ini_4", "A_ini_5", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
+colnames(proposal_matrix) <- c("A_ini_1", "A_ini_2", "A_ini_3", "A_ini_4", "A_ini_5", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
 
-
-mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = proposal_matrix, transform = parameter_transform)
+mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = proposal_matrix, transform = transform)
 
 # n_steps <- 100 #1e6
 
@@ -248,7 +245,7 @@ pmcmc_run_plus_tuning <- function(n_particles, n_steps){
   # dev.off()
   
   # png("pictures/diag_ggpairs.png", width = 17, height = 12, unit = "cm", res = 1200)
-  # fig <- GGally::ggpairs(as.data.frame(tune_pmcmc_result$pars))
+  fig <- GGally::ggpairs(as.data.frame(tune_pmcmc_result$pars))
   # dev.off()
   
 }
