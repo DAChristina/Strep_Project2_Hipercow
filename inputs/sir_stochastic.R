@@ -78,9 +78,15 @@ dim(n_RS) <- N_age
 N_ini[] <- user() # FIXED England's pop size is roughly 67,000,000
 # S_ini[] <- user(0)
 
-# log_A_ini <- user()
-# init_A_ini <- 10^(log_A_ini)
-A_ini[] <- user() # required in mcState
+log_A_ini <- user()
+
+A_ini[1] <- 10^(log_A_ini)*N_ini[1]
+A_ini[2] <- 10^(log_A_ini)*N_ini[2]
+A_ini[3] <- 10^(log_A_ini)*N_ini[3]
+A_ini[4] <- 10^(log_A_ini)*N_ini[4]
+A_ini[5] <- 10^(log_A_ini)*N_ini[5]
+
+
 D_ini[] <- user()
 R_ini[] <- user()
 

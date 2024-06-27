@@ -62,24 +62,24 @@ pars <- list(m = transmission,
              D_ini = c(0,0,0,0,0),
              R_ini = c(0,0,0,0,0),
              # we will parameterise pars below:
-             A_ini = round(0.16479864*contact_5_demographic$demography$population), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
+             log_A_ini = (-4), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
              time_shift = 0.366346711348848,
              beta_0 = 0.063134635077278,
              beta_1 = 0.161472506104886,
-             scaled_wane = (-0.210952113801415),
+             scaled_wane = (0.9),
              log_delta = (-4.03893492453891), # will be fitted to logN(-10, 0.7)
              psi = (0.5)
 )
 
 # https://mrc-ide.github.io/odin-dust-tutorial/mcstate.html#/the-model-over-time
-n_particles <- 50 # Trial n_particles = 50
-filter <- mcstate::particle_filter$new(data = sir_data,
-                                       model = gen_sir, # Use odin.dust input
-                                       n_particles = n_particles,
-                                       compare = case_compare,
-                                       seed = 1L)
-
-filter$run(pars)
+# n_particles <- 50 # Trial n_particles = 50
+# filter <- mcstate::particle_filter$new(data = sir_data,
+#                                        model = gen_sir, # Use odin.dust input
+#                                        n_particles = n_particles,
+#                                        compare = case_compare,
+#                                        seed = 1L)
+# 
+# filter$run(pars)
 
 # Variance and particles estimation (as suggested by Rich)
 # parallel::detectCores() # I have 4 cores
@@ -104,10 +104,10 @@ filter$run(pars)
 # Update n_particles based on calculation in 4 cores with var(x) ~ 267: 32000
 
 priors <- prepare_priors(pars)
-proposal_matrix <- diag(200, 11)
+proposal_matrix <- diag(200, 7)
 proposal_matrix <- (proposal_matrix + t(proposal_matrix)) / 2
-rownames(proposal_matrix) <- c("A_ini_1", "A_ini_2", "A_ini_3", "A_ini_4", "A_ini_5", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
-colnames(proposal_matrix) <- c("A_ini_1", "A_ini_2", "A_ini_3", "A_ini_4", "A_ini_5", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
+rownames(proposal_matrix) <- c("log_A_ini", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
+colnames(proposal_matrix) <- c("log_A_ini", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
 
 mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = proposal_matrix, transform = transform)
 
@@ -173,8 +173,8 @@ pmcmc_run_plus_tuning <- function(n_particles, n_steps){
   new_proposal_matrix <- apply(new_proposal_matrix, 2, as.numeric)
   new_proposal_matrix <- new_proposal_matrix/10 # Lilith's suggestion
   new_proposal_matrix <- (new_proposal_matrix + t(new_proposal_matrix)) / 2
-  rownames(new_proposal_matrix) <- c("A_ini_1", "A_ini_2", "A_ini_3", "A_ini_4", "A_ini_5", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
-  colnames(new_proposal_matrix) <- c("A_ini_1", "A_ini_2", "A_ini_3", "A_ini_4", "A_ini_5", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
+  rownames(new_proposal_matrix) <- c("log_A_ini", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
+  colnames(new_proposal_matrix) <- c("log_A_ini", "time_shift", "beta_0", "beta_1", "scaled_wane", "log_delta", "psi")
   # isSymmetric(new_proposal_matrix)
   
   tune_mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = new_proposal_matrix, transform = transform)

@@ -29,14 +29,15 @@ transmission
 # Running the SIR model with dust
 pars <- list(m = transmission,
              N_ini = contact_5_demographic$demography$population,
-             # init_A_ini = 1e-3,
-             A_ini = round(0.16479864*contact_5_demographic$demography$population), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
+             log_A_ini = (-4),
+             # A_ini = round(0.0016479864*contact_5_demographic$demography$population), # S_ini*10^(-5.69897) = 120 people; change A_ini into log10(A_ini)
+             # A_ini = c(100, 100, 100, 100, 100),
              D_ini = c(0, 0, 0, 0, 0),
              R_ini = c(0, 0, 0, 0, 0),
              time_shift = 0.366346711348848,
              beta_0 = 0.063134635077278,
              beta_1 = 0.161472506104886,
-             log_wane = (-0.210952113801415),
+             scaled_wane = (0.9),
              log_delta = (-4.03893492453891), # will be fitted to logN(-10, 0.7)
              psi = (0.5),
              sigma_2 = (1)
@@ -112,10 +113,12 @@ par(mfrow = c(2,3), oma=c(2,3,0,0))
 for (i in 1:N_age) {
   par(mar = c(3, 4, 2, 0.5))
   cols <- c(S = "#8c8cd9", A = "darkred", D = "orange", R = "#999966", n_AD_daily = "#cc0099", n_AD_cumul = "green")
-  matplot(time, t(x[i + 7 + 4*N_age, , ]), type = "l", # Offset to access numbers in age compartment
+  matplot(time, t(x[i + 7 + 5*N_age, , ]), type = "l", # Offset to access numbers in age compartment
           xlab = "", ylab = "", yaxt="none", main = paste0("Age ", contact_5_demographic$demography$age.group[i]),
           col = cols[["n_AD_daily"]], lty = 1)#, ylim=range(x[-1:-3,,]))
-  # matlines(time, t(x[i + 7 + N_age, , ]), col = cols[["A"]], lty = 1)
+  # matplot(time, t(x[i + 7, , ]), type = "l", # Offset to access numbers in age compartment
+  #         xlab = "", ylab = "", yaxt="none", main = paste0("Age ", contact_5_demographic$demography$age.group[i]),
+  #         col = cols[["S"]], lty = 1)#, ylim=range(x[-1:-3,,]))
   # matlines(time, t(x[i + 7 + 2*N_age, , ]), col = cols[["R"]], lty = 1)
   legend("right", lwd = 1, col = cols, legend = names(cols), bty = "n")
   axis(2, las =2)
