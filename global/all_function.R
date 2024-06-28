@@ -99,7 +99,7 @@ transform <- parameter_transform(transmission)
 prepare_parameters <- function(initial_pars, priors, proposal, transform) {
   
   mcmc_pars <- mcstate::pmcmc_parameters$new(
-    list(mcstate::pmcmc_parameter("log_A_ini", (-5.69897), min = (-6), max = 0,
+    list(mcstate::pmcmc_parameter("log_A_ini", (-5.69897), min = (-10), max = 0,
                                   prior = priors$log_A_ini),
          # mcstate::pmcmc_parameter("A_ini_1", 100, min = 10, max = 10000,
          #                          prior = priors$A_ini),
