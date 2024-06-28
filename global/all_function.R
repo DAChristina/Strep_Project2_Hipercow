@@ -52,7 +52,7 @@ parameter_transform <- function(transmission) {
   
   transform <- function(pars){
     # re-define pars with pars that I really wanna fit only
-    log_A_ini <- pars[["log_A_ini"]]
+    A_ini <- pars[paste0("A_ini_", 1:5)]
     # A_ini_1 <- pars[["A_ini"]][1]
     # A_ini_2 <- pars[["A_ini"]][2]
     # A_ini_3 <- pars[["A_ini"]][3]
@@ -66,7 +66,7 @@ parameter_transform <- function(transmission) {
     psi <- pars[["psi"]]
     # sigma_2 <- pars[["sigma_2"]]
     
-    pars <- list(log_A_ini = log_A_ini,
+    pars <- list(A_ini = A_ini,
                  # A_ini_1 = A_ini_1,
                  # A_ini_2 = A_ini_2,
                  # A_ini_3 = A_ini_3,
@@ -81,7 +81,7 @@ parameter_transform <- function(transmission) {
                  # sigma_2 = sigma_2
     )
     # But I wanna define A_ini based on 5 different pars:
-    # pars$A_ini <- c(pars$A_ini_1, pars$A_ini_2, pars$A_ini_3, pars$A_ini_4, pars$A_ini_5)
+    # pars$A_ini <- pars[[paste0("A_ini_", 1:5)]]
     # pars$A_ini <-  round(0.16479864*contact_5_demographic$demography$population)
     pars$N_ini <-  contact_5_demographic$demography$population
     pars$D_ini <-  c(0,0,0,0,0)
@@ -99,18 +99,18 @@ transform <- parameter_transform(transmission)
 prepare_parameters <- function(initial_pars, priors, proposal, transform) {
   
   mcmc_pars <- mcstate::pmcmc_parameters$new(
-    list(mcstate::pmcmc_parameter("log_A_ini", (-5.69897), min = (-10), max = 0,
-                                  prior = priors$log_A_ini),
-         # mcstate::pmcmc_parameter("A_ini_1", 100, min = 10, max = 10000,
-         #                          prior = priors$A_ini),
-         # mcstate::pmcmc_parameter("A_ini_2", 100, min = 10, max = 10000,
-         #                          prior = priors$A_ini),
-         # mcstate::pmcmc_parameter("A_ini_3", 100, min = 10, max = 10000,
-         #                          prior = priors$A_ini),
-         # mcstate::pmcmc_parameter("A_ini_4", 100, min = 10, max = 10000,
-         #                          prior = priors$A_ini),
-         # mcstate::pmcmc_parameter("A_ini_5", 100, min = 10, max = 10000,
-         #                          prior = priors$A_ini),
+    list(#mcstate::pmcmc_parameter("A_ini", (100), min = (10), max = 10000,
+                                  #prior = priors$A_ini),
+         mcstate::pmcmc_parameter("A_ini_1", 100, min = 10, max = 10000,
+                                  prior = priors$A_ini),
+         mcstate::pmcmc_parameter("A_ini_2", 100, min = 10, max = 10000,
+                                  prior = priors$A_ini),
+         mcstate::pmcmc_parameter("A_ini_3", 100, min = 10, max = 10000,
+                                  prior = priors$A_ini),
+         mcstate::pmcmc_parameter("A_ini_4", 100, min = 10, max = 10000,
+                                  prior = priors$A_ini),
+         mcstate::pmcmc_parameter("A_ini_5", 100, min = 10, max = 10000,
+                                  prior = priors$A_ini),
          mcstate::pmcmc_parameter("time_shift", 0.2, min = 0, max = 1,
                                   prior = priors$time_shift),
          mcstate::pmcmc_parameter("beta_0", 0.06565, min = 0, max = 0.8,
@@ -134,8 +134,8 @@ prepare_parameters <- function(initial_pars, priors, proposal, transform) {
 prepare_priors <- function(pars) {
   priors <- list()
   
-  priors$log_A_ini <- function(s) {
-    dunif(s, min = (-10), max = 0, log = TRUE)
+  priors$A_ini <- function(s) {
+    dunif(s, min = (10), max = 10000, log = TRUE)
   }
   priors$time_shift <- function(s) {
     dunif(s, min = 0, max = 1, log = TRUE)
