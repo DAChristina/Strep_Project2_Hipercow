@@ -65,9 +65,11 @@ wane <- 10^(scaled_wane*((-0.5)-(-4))+(-4))
 p_SA <- 1- exp(-lambda * dt)
 p_Asym <- 1- exp(-(delta+sigma_1) * dt)
 p_AD <- 1- exp(-(delta/(delta+sigma_1) * dt))
+p_AR <- 1- exp(-(sigma_1/(delta+sigma_1) * dt))
 
 p_Dis <- 1- exp(-(sigma_2+mu_0+mu_1) * dt)
 p_DR <- 1- exp(-(sigma_2/(sigma_2+mu_0+mu_1)) * dt)
+p_Dd <- 1- exp(-(mu_1/(sigma_2+mu_0+mu_1)) * dt)
 
 p_RS <- 1- exp(-wane * dt) # edited for test
 # p_RS <- 1- exp(-(10^(5.81837298310795E-05*((-0.5)-(-4))+(-4))) * dt)
@@ -77,10 +79,10 @@ p_RS <- 1- exp(-wane * dt) # edited for test
 n_SA <- rbinom(S, p_SA)
 n_Asym <- rbinom(A, p_Asym) # n_Asym <- n_AD + n_AR cause cyclic dependency error
 n_AD <- rbinom(n_Asym, p_AD)
-n_AR <- n_Asym - n_AD # unless error occurs: Error: 1 particles reported errors. Invalid call to binomial with n = -1, p = 0.0846896, q = 0.91531
+n_AR <- rbinom((A - n_AD), p_AR) # unless error occurs: Error: 1 particles reported errors. Invalid call to binomial with n = -1, p = 0.0846896, q = 0.91531
 n_Dis <- rbinom(D, p_Dis)
 n_DR <- rbinom(n_Dis, p_DR)
-n_Dd <- n_Dis - n_DR  # unless error occurs: Error: 1 particles reported errors. Invalid call to binomial with n = -1, p = 0.0846896, q = 0.91531
+n_Dd <- rbinom((D - n_DR), p_Dd)  # unless error occurs: Error: 1 particles reported errors. Invalid call to binomial with n = -1, p = 0.0846896, q = 0.91531
 n_RS <- rbinom(R, p_RS)
 
 # The transitions
