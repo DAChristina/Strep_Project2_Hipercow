@@ -94,7 +94,7 @@ mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal =
 # pmcmc_run <- mcstate::pmcmc(mcmc_pars, filter_deterministic, control = control)
 
 # Directory for saving the outputs
-dir.create("outputs", FALSE, TRUE)
+dir.create("outputs/main/vacc", FALSE, TRUE)
 
 # Trial combine pMCMC + tuning #################################################
 pmcmc_run_plus_tuning <- function(n_particles, n_steps){
@@ -122,22 +122,22 @@ pmcmc_run_plus_tuning <- function(n_particles, n_steps){
   # The pmcmc
   pmcmc_result <- mcstate::pmcmc(mcmc_pars, filter_deterministic, control = control)
   pmcmc_result
-  saveRDS(pmcmc_result, "outputs/pmcmc_result.rds")
+  saveRDS(pmcmc_result, "outputs/main/vacc/pmcmc_result.rds")
   
   new_proposal_mtx <- cov(pmcmc_result$pars)
-  write.csv(new_proposal_mtx, "outputs/new_proposal_mtx.csv", row.names = TRUE)
+  write.csv(new_proposal_mtx, "outputs/main/vacc/new_proposal_mtx.csv", row.names = TRUE)
   
   lpost_max <- which.max(pmcmc_result$probabilities[, "log_posterior"])
   write.csv(as.list(pmcmc_result$pars[lpost_max, ]),
-            "outputs/initial.csv", row.names = FALSE)
+            "outputs/main/vacc/initial.csv", row.names = FALSE)
   
   # Further processing for thinning chains
   mcmc1 <- pmcmc_further_process(n_steps, pmcmc_result)
-  write.csv(mcmc1, "outputs/mcmc1.csv", row.names = TRUE)
+  write.csv(mcmc1, "outputs/main/vacc/mcmc1.csv", row.names = TRUE)
   
   # Calculating ESS & Acceptance Rate
   calc_ess <- ess_calculation(mcmc1)
-  write.csv(calc_ess, "outputs/calc_ess.csv", row.names = TRUE)
+  write.csv(calc_ess, "outputs/main/vacc/calc_ess.csv", row.names = TRUE)
   
   # Figures! (still failed, margin error)
   fig <- pmcmc_trace(mcmc1)
@@ -145,7 +145,7 @@ pmcmc_run_plus_tuning <- function(n_particles, n_steps){
   Sys.sleep(10) # wait 10 secs before conducting tuning
   
   # New proposal matrix
-  new_proposal_matrix <- as.matrix(read.csv("outputs/new_proposal_mtx.csv"))
+  new_proposal_matrix <- as.matrix(read.csv("outputs/main/vacc/new_proposal_mtx.csv"))
   new_proposal_matrix <- new_proposal_matrix[, -1]
   new_proposal_matrix <- apply(new_proposal_matrix, 2, as.numeric)
   new_proposal_matrix <- new_proposal_matrix/100 # Lilith's suggestion
@@ -183,7 +183,7 @@ pmcmc_run_plus_tuning <- function(n_particles, n_steps){
   # The pmcmc
   tune_pmcmc_result <- mcstate::pmcmc(tune_mcmc_pars, filter_deterministic, control = tune_control)
   tune_pmcmc_result
-  saveRDS(tune_pmcmc_result, "outputs/tune_pmcmc_result.rds")
+  saveRDS(tune_pmcmc_result, "outputs/main/vacc/tune_pmcmc_result.rds")
   
   tune_lpost_max <- which.max(tune_pmcmc_result$probabilities[, "log_posterior"])
   mcmc_lo_CI <- apply(tune_pmcmc_result$pars, 2, function(x) quantile(x, probs = 0.025))
@@ -194,17 +194,17 @@ pmcmc_run_plus_tuning <- function(n_particles, n_steps){
   colnames(t_tune_initial) <- c("values", "low_CI", "high_CI")
   
   write.csv(t_tune_initial,
-            "outputs/tune_initial_with_CI.csv", row.names = FALSE)
+            "outputs/main/vacc/tune_initial_with_CI.csv", row.names = FALSE)
   
   # Further processing for thinning chains
   mcmc2 <- tuning_pmcmc_further_process(n_steps, tune_pmcmc_result)
   # mcmc2 <- coda::as.mcmc(cbind(
   #   tune_pmcmc_result$probabilities, tune_pmcmc_result$pars))
-  write.csv(mcmc2, "outputs/mcmc2.csv", row.names = TRUE)
+  write.csv(mcmc2, "outputs/main/vacc/mcmc2.csv", row.names = TRUE)
   
   # Calculating ESS & Acceptance Rate
   tune_calc_ess <- ess_calculation(mcmc2)
-  write.csv(tune_calc_ess, "outputs/tune_calc_ess.csv", row.names = TRUE)
+  write.csv(tune_calc_ess, "outputs/main/vacc/tune_calc_ess.csv", row.names = TRUE)
   
   # Figures! (still failed, margin error)
   fig <- pmcmc_trace(mcmc2)

@@ -81,15 +81,15 @@ p_RS <- 1- exp(-wane * dt) # edited for test
 # Draws for numbers changing between compartments
 n_Sus <- rbinom(S, p_Sus)
 n_SA <- rbinom(n_Sus, p_SA)
-n_SR <- rbinom((S - n_SA), p_SR)
+n_SR <- rbinom((n_Sus - n_SA), p_SR)
 
 n_Asym <- rbinom(A, p_Asym) # n_Asym <- n_AD + n_AR cause cyclic dependency error
 n_AD <- rbinom(n_Asym, p_AD)
-n_AR <- rbinom((A - n_AD), p_AR) # unless error occurs: Error: 1 particles reported errors. Invalid call to binomial with n = -1, p = 0.0846896, q = 0.91531
+n_AR <- rbinom((n_Asym - n_AD), p_AR) # unless error occurs: Error: 1 particles reported errors. Invalid call to binomial with n = -1, p = 0.0846896, q = 0.91531
 
 n_Dis <- rbinom(D, p_Dis)
 n_DR <- rbinom(n_Dis, p_DR)
-n_Dd <- rbinom((D - n_DR), p_Dd)  # unless error occurs: Error: 1 particles reported errors. Invalid call to binomial with n = -1, p = 0.0846896, q = 0.91531
+n_Dd <- rbinom((n_Dis - n_DR), p_Dd)  # unless error occurs: Error: 1 particles reported errors. Invalid call to binomial with n = -1, p = 0.0846896, q = 0.91531
 
 n_RS <- rbinom(R, p_RS)
 
