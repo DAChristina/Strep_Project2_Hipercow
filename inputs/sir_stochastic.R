@@ -22,7 +22,7 @@ scaled_wane <- user(0.2)
 # https://fingertips.phe.org.uk/search/PPV#page/4/gid/1/pat/159/par/K02000001/ati/15/are/E92000001/iid/30313/age/27/sex/4/cat/-1/ctp/-1/yrr/1/cid/4/tbm/1
 # vacc_elderly <- 0.7*0.57 # FIXED PPV23 vaccination coverage * efficacy
 # ratio of vaccinated elderly for >64 y.o. people, averaged 69.7243% ~ 70%
-vacc <- 0.9*0.862*0.02 # FIXED PCV13 vaccination coverage * efficacy * proportion of kids below 2 y.o.
+vacc_p <- 0.9*0.862*0.02 # FIXED PCV13 vaccination coverage * efficacy * proportion of kids below 2 y.o.
 # ratio of vaccinated kids, averaged 90%
 # vacc <- (vacc_elderly + vacc_kids)/2 # FIXED, average
 
@@ -49,11 +49,11 @@ initial(n_AD_cumul) <- 0
 
 # 3. UPDATES ###################################################################
 N <- S + A + D + R
-beta_temporary <- beta_0*(1+beta_1*sin(2*pi*((time_shift*365)+time)/365))
+beta <- beta_0*(1+beta_1*sin(2*pi*((time_shift*365)+time)/365))
 # Infant vaccination coverage occurs when PCV13 introduced in April 2010 (day 2648 from 01.01.2003)
 # https://fingertips.phe.org.uk/search/vaccination#page/4/gid/1/pat/159/par/K02000001/ati/15/are/E92000001/iid/30306/age/30/sex/4/cat/-1/ctp/-1/yrr/1/cid/4/tbm/1/page-options/tre-do-0
 # https://cran.r-project.org/web/packages/finalsize/vignettes/varying_contacts.html
-beta <- if (time >= 2648) beta_temporary*(1-vacc) else beta_temporary
+vacc <- if (time >= 2648) vacc_p else 0
 lambda <- beta*(A+D)/N # infectious state from Asymtomatic & Diseased individuals
 delta <- (10^(log_delta))*UK_calibration
 
@@ -62,7 +62,10 @@ wane <- 10^(scaled_wane*((-0.5)-(-4))+(-4))
 
 
 # Individual probabilities of transition
-p_SA <- 1- exp(-lambda * dt)
+p_Sus <- 1- exp(-(lambda+vacc) * dt)
+p_SA <- 1- exp(-(lambda/(lambda+vacc)) * dt)
+p_SR <- 1- exp(-(vacc/(lambda+vacc)) * dt)
+
 p_Asym <- 1- exp(-(delta+sigma_1) * dt)
 p_AD <- 1- exp(-(delta/(delta+sigma_1) * dt))
 p_AR <- 1- exp(-(sigma_1/(delta+sigma_1) * dt))
@@ -76,13 +79,18 @@ p_RS <- 1- exp(-wane * dt) # edited for test
 # p_RS <- 1- exp(-(10^(0.9*((-0.5)-(-4))+(-4))) * dt)
 
 # Draws for numbers changing between compartments
-n_SA <- rbinom(S, p_SA)
+n_Sus <- rbinom(S, p_Sus)
+n_SA <- rbinom(n_Sus, p_SA)
+n_SR <- rbinom((S - n_SA), p_SR)
+
 n_Asym <- rbinom(A, p_Asym) # n_Asym <- n_AD + n_AR cause cyclic dependency error
 n_AD <- rbinom(n_Asym, p_AD)
 n_AR <- rbinom((A - n_AD), p_AR) # unless error occurs: Error: 1 particles reported errors. Invalid call to binomial with n = -1, p = 0.0846896, q = 0.91531
+
 n_Dis <- rbinom(D, p_Dis)
 n_DR <- rbinom(n_Dis, p_DR)
 n_Dd <- rbinom((D - n_DR), p_Dd)  # unless error occurs: Error: 1 particles reported errors. Invalid call to binomial with n = -1, p = 0.0846896, q = 0.91531
+
 n_RS <- rbinom(R, p_RS)
 
 # The transitions
