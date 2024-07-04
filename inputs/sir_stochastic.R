@@ -6,9 +6,11 @@ dt <- 1/freq
 initial(time) <- 0
 
 # 1. PARAMETERS ################################################################
-time_shift <- user(0)
+time_shift_1 <- user(0)
+time_shift_2 <- user(0)
 beta_0 <- user(0)
 beta_1 <- user(0)
+beta_2 <- user(0)
 
 # Vaccination:
 # https://webarchive.nationalarchives.gov.uk/ukgwa/20211105111851mp_/https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/540290/hpr2416_ppv.pdf
@@ -43,6 +45,7 @@ N_age <- user(5) # number of age group
 dim(N_ini) <- N_age
 # dim(S_ini) <- N_age
 dim(A_ini) <- N_age
+dim(log_A_ini) <- N_age
 dim(D_ini) <- N_age
 dim(R_ini) <- N_age
 
@@ -78,14 +81,12 @@ dim(n_RS) <- N_age
 N_ini[] <- user() # FIXED England's pop size is roughly 67,000,000
 # S_ini[] <- user(0)
 
-A_ini[] <- user()
-
-# A_ini[1] <- 10^(log_A_ini)*N_ini[1]
-# A_ini[2] <- 10^(log_A_ini)*N_ini[2]
-# A_ini[3] <- 10^(log_A_ini)*N_ini[3]
-# A_ini[4] <- 10^(log_A_ini)*N_ini[4]
-# A_ini[5] <- 10^(log_A_ini)*N_ini[5]
-
+log_A_ini[ ] <- user()
+A_ini[1] <- 10^(log_A_ini[1])*N_ini[1]
+A_ini[2] <- 10^(log_A_ini[2])*N_ini[2]
+A_ini[3] <- 10^(log_A_ini[3])*N_ini[3]
+A_ini[4] <- 10^(log_A_ini[4])*N_ini[4]
+A_ini[5] <- 10^(log_A_ini[5])*N_ini[5]
 
 D_ini[] <- user()
 R_ini[] <- user()
@@ -115,7 +116,7 @@ initial(n_AD_cumul_tot) <- 0
 N[] <- S[i] + A[i] + D[i] + R[i]
 m[, ] <- user() # age-structured contact matrix
 
-beta_temporary <- beta_0*(1+beta_1*sin(2*pi*((time_shift*365)+time)/365))
+beta_temporary <- beta_0*((1+beta_1*cos(2*pi*((time_shift_1*365)+time)/365)) + (1+beta_2*sin(2*pi*((time_shift_2*365)+time)/365)))
 # Infant vaccination coverage occurs when PCV13 introduced in April 2010 (day 2648 from 01.01.2003)
 # https://fingertips.phe.org.uk/search/vaccination#page/4/gid/1/pat/159/par/K02000001/ati/15/are/E92000001/iid/30306/age/30/sex/4/cat/-1/ctp/-1/yrr/1/cid/4/tbm/1/page-options/tre-do-0
 # https://cran.r-project.org/web/packages/finalsize/vignettes/varying_contacts.html

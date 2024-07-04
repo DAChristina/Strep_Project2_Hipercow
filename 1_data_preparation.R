@@ -1,6 +1,7 @@
 # Data preparation
 library(tidyverse)
 library(readxl)
+library(cowplot)
 
 # New updated data with meningitis (25.04.2024)
 # All df are stored in raw_data
@@ -117,7 +118,7 @@ compiled <- all_date %>%
 # Requires case count per aligned day only
 
 # Viz per-day counts by base R plot
-png("pictures/daily_cases.png", width = 17, height = 30, unit = "cm", res = 1200)
+# png("pictures/daily_cases.png", width = 17, height = 30, unit = "cm", res = 1200)
 par(mfrow= c(5, 1), bty = "n", mar = c(3, 3, 1, 1), mgp = c(1.5, 0.5, 0))
 col_imD <- c(counts_Ser1 = "deepskyblue3")
 for(i in c("cases_1_toddler", "cases_2_518", "cases_3_1930", "cases_4_3164", "cases_5_65plus")){
@@ -130,9 +131,65 @@ for(i in c("cases_1_toddler", "cases_2_518", "cases_3_1930", "cases_4_3164", "ca
   
   legend("topleft", names(col_imD), fill = col_imD, bty = "n")
 }
+# dev.off()
 
+# Viz per-week counts by ggplot
+Natm_n_imD <- compiled
+Natm_n_imD$weeks <- cut(Natm_n_imD[,"allDate"], breaks="week")
+Nat_weekly <- Natm_n_imD %>% 
+  dplyr::group_by(weeks) %>% 
+  dplyr::summarise(cases_1_toddler_weekly = sum(cases_1_toddler),
+                   cases_2_518_weekly = sum(cases_2_518),
+                   cases_3_1930_weekly = sum(cases_3_1930),
+                   cases_4_3164_weekly = sum(cases_4_3164),
+                   cases_5_65plus_weekly = sum(cases_5_65plus)) %>% 
+  dplyr::ungroup() #%>% 
 
-dev.off()
+# png("pictures/weekly_cases.png", width = 17, height = 18, unit = "cm", res = 1200)
+cases_1 <- ggplot(Nat_weekly, aes(as.Date(weeks))) +
+  geom_line(aes(y = cases_1_toddler_weekly), colour = "deepskyblue3") +
+  labs(x = NULL, y = NULL) +
+  ggtitle("<5")
+
+cases_2 <- ggplot(Nat_weekly, aes(as.Date(weeks))) +
+  geom_line(aes(y = cases_2_518_weekly), colour = "deepskyblue3") +
+  labs(x = NULL, y = NULL) +
+  ggtitle("5-18")
+
+cases_3 <- ggplot(Nat_weekly, aes(as.Date(weeks))) +
+  geom_line(aes(y = cases_3_1930_weekly), colour = "deepskyblue3") +
+  labs(x = NULL, y = NULL) +
+  ggtitle("19-30")
+
+cases_4 <- ggplot(Nat_weekly, aes(as.Date(weeks))) +
+  geom_line(aes(y = cases_4_3164_weekly), colour = "deepskyblue3") +
+  labs(x = NULL, y = NULL) +
+  ggtitle("31-64")
+
+cases_5 <- ggplot(Nat_weekly, aes(as.Date(weeks))) +
+  geom_line(aes(y = cases_5_65plus_weekly), colour = "deepskyblue3") +
+  labs(x = NULL, y = NULL) +
+  ggtitle("65+")
+
+cases <- cowplot::plot_grid(cases_1, cases_2, cases_3, cases_4, cases_5,
+                   # labels = c("A", "B", "C", "D", "E"),
+                   nrow = 5,
+                   scale = 0.95)
+
+x_label <- cowplot::ggdraw() +
+  cowplot::draw_label("Year", x=0.53, y=  0, vjust=-0.5, angle= 0)
+y_label <- cowplot::ggdraw() +
+  cowplot::draw_label("Serotype 1 Cases (Aggregated by Week)", x=0, y=-50, vjust= 1.5, angle=90)
+
+# Combine all together
+final_plot <- cowplot::plot_grid(
+  y_label, cases, x_label,
+  ncol = 1,
+  rel_heights = c(0.01, 1, 0.01),
+  rel_widths = c(1)
+)
+final_plot
+# dev.off()
 
 ## 2. Data Fitting #############################################################
 # The anatomy of an mcstate particle filter, as noted above, consists of three main components: \n 
@@ -147,5 +204,6 @@ incidence <- compiled %>%
 
 dir.create("inputs")
 write.csv(incidence, "inputs/incidence.csv", row.names = FALSE)
+write.csv(compiled, "inputs/incidence_weekly.csv", row.names = FALSE)
 
 
