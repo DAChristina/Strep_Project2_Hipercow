@@ -15,10 +15,6 @@ beta_0 <- user(0)
 beta_1 <- user(0)
 beta_2 <- user(0)
 
-max_wane <- (0) # FIXED, scaled waning immunity
-min_wane <- (-2) # FIXED, scaled waning immunity
-scaled_wane <- user(0)
-
 # Vaccination:
 # https://webarchive.nationalarchives.gov.uk/ukgwa/20211105111851mp_/https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/540290/hpr2416_ppv.pdf
 # https://fingertips.phe.org.uk/search/PPV#page/4/gid/1/pat/159/par/K02000001/ati/15/are/E92000001/iid/30313/age/27/sex/4/cat/-1/ctp/-1/yrr/1/cid/4/tbm/1
@@ -60,9 +56,7 @@ beta <- if (time >= 2648) beta_temporary*(1-vacc) else beta_temporary
 lambda <- beta*(A+D)/N # infectious state from Asymtomatic & Diseased individuals
 delta <- (10^(log_delta))*UK_calibration
 
-log_wane <- scaled_wane*(max_wane-min_wane)+min_wane # scaled_wane*(max_wane−min_wane)+min_wane; rescaled using (wane-wane_min)/(wane_max-wane_min)
-wane <- 10^(log_wane)
-# wane <- 0
+wane <- 0
 
 # Individual probabilities of transition
 p_SA <- 1- exp(-lambda * dt)

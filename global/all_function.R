@@ -25,7 +25,6 @@ parameter_transform <- function(pars) {
   beta_0 <- pars[["beta_0"]]
   beta_1 <- pars[["beta_1"]]
   beta_2 <- pars[["beta_2"]]
-  scaled_wane <- pars[["scaled_wane"]]
   log_delta <- pars[["log_delta"]]
   # sigma_2 <- pars[["sigma_2"]]
 
@@ -35,7 +34,6 @@ parameter_transform <- function(pars) {
        beta_0 = beta_0,
        beta_1 = beta_1,
        beta_2 = beta_2,
-       scaled_wane = scaled_wane,
        log_delta = log_delta#,
        # sigma_2 = sigma_2
        )
@@ -61,8 +59,6 @@ prepare_parameters <- function(initial_pars, priors, proposal, transform) {
                                   prior = priors$betas),
          mcstate::pmcmc_parameter("beta_2", 0.07, min = 0, max = 0.7,
                                   prior = priors$betas),
-         mcstate::pmcmc_parameter("scaled_wane", (0.5), min = (0), max = 1,
-                                  prior = priors$scaled_wane),
          mcstate::pmcmc_parameter("log_delta", (-4.98), min = (-10), max = 0.7,
                                   prior = priors$log_delta)#,
          # mcstate::pmcmc_parameter("sigma_2", 1, min = 0, max = 10,
@@ -84,9 +80,6 @@ prepare_priors <- function(pars) {
   }
   priors$betas <- function(s) {
     dgamma(s, shape = 1, scale = 0.1, log = TRUE)
-  }
-  priors$scaled_wane <- function(s) {
-    dbeta(s, shape1 = 1.25, shape2 = 1.25, log = TRUE)
   }
   priors$log_delta <- function(s) {
     dunif(s, min = (-10), max = 0.7, log = TRUE)
@@ -112,12 +105,37 @@ ess_calculation <- function(mcmc1){
   calc
 }
 
+# pmcmc_trace <- function(x, metrics = NULL) {
+#   for (nm in colnames(x)) {
+#     plot(x = seq_len(nrow(x)), y = x[, nm],
+#          xlab = "iteration", ylab = nm, main = "", type = "l")
+#     if (!is.null(metrics)) {
+#       title(main = sprintf("ESS=%.f; GR=%.2f", metrics$ess[nm],
+#                            metrics$gr$psrf[nm, 1]), font.main = 1)
+#     }
+#   }
+# }
+
 pmcmc_trace <- function(mcmc1) {
   plot(mcmc1) # to save the figures into pdf
   # png("pictures/mcmc1.png", res = 1200)
   # plot(mcmc1)
   # dev.off()
 }
+
+
+calculate_pmcmc_metrics <- function(pmcmc_results) {
+  
+  results <- lapply(unique(pmcmc_results$chain), function(i) {
+    coda::as.mcmc(pmcmc_results$pars[pmcmc_results$chain == i, ])
+  })
+  results <- coda::as.mcmc.list(results)
+  ret <- list(gr  = coda::gelman.diag(results, multivariate = FALSE),
+              ess = coda::effectiveSize(results),
+              acceptance_rate = 1 - coda::rejectionRate(results))
+  ret
+}
+
 
 ################################################################################
 # Tuning functions
@@ -182,6 +200,24 @@ diag_gelman_rubin <- function(mcmc_chains_list) {
                     multivariate=F) # Change multivariate = F instead of T
   
 }
+
+save_gelman_plots <- function(mcmc_chains_list, n_plots) {
+  for (i in 1:n_plots) {
+    par(mfrow = c(1, 1)) # coz that annoying automatic plots
+    
+    coda::gelman.plot(mcmc_chains_list,
+                      bin.width = 10,
+                      max.bins = 50,
+                      confidence = 0.95,
+                      transform = FALSE,
+                      autoburnin=TRUE,
+                      auto.layout = TRUE)
+    
+    dev.off()
+  }
+}
+
+
 
 # 2. Autocorrelation plots
 diag_aucorr <- function(mcmc2){

@@ -43,50 +43,15 @@ pars <- list(log_A_ini = (-5.69897), # S_ini*10^(log10(-5.69897)) = 120 people; 
              beta_0 = 0.06565,
              beta_1 = 0.07, # in toy data the real value of beta_1 = 0.07
              beta_2 = 0.2,
-             max_wane = (-0.5),
-             min_wane = (-4),
-             scaled_wane = (0.5),
              log_delta = (-4.98),
              sigma_2 = 1
 ) # Serotype 1 is categorised to have the lowest carriage duration
 
-# https://mrc-ide.github.io/odin-dust-tutorial/mcstate.html#/the-model-over-time
-# n_particles <- 50 # Trial n_particles = 50
-# filter <- mcstate::particle_filter$new(data = sir_data,
-#                                        model = gen_sir, # Use odin.dust input
-#                                        n_particles = n_particles,
-#                                        compare = case_compare,
-#                                        seed = 1L)
-# 
-# filter$run(pars)
-
-# Variance and particles estimation (as suggested by Rich)
-# parallel::detectCores() # I have 4 cores
-# x <- replicate(30, filter$run(pars))
-# x
-# 
-# var(x)
-# # [1] 266.5598
-# 69 / 267 # Trial 69 particles for 267 var; how many particles are needed?
-# # [1] 0.258427
-# 69  / 4 # change by the factor of 4
-# # [1] 17.25
-# 69  / 4  /4
-# # [1] 4.3125
-# 69  / 4  /4 /4
-# # [1] 1.078125 # so the factor is 4*4*4 to finally get roughly 1 particle
-# 4 * 4 * 4
-# # [1] 64
-# 4 * 4 * 4 * 500
-# # [1] 32000 --> particles needed for var(x) = 1
-
-# Update n_particles based on calculation in 4 cores with var(x) ~ 267: 32000
-
 priors <- prepare_priors(pars)
-proposal_matrix <- diag(300, 8) # previously 200
+proposal_matrix <- diag(300, 7) # previously 200
 proposal_matrix <- (proposal_matrix + t(proposal_matrix)) / 2
-rownames(proposal_matrix) <- c("log_A_ini", "time_shift_1", "time_shift_2", "beta_0", "beta_1", "beta_2", "scaled_wane", "log_delta")
-colnames(proposal_matrix) <- c("log_A_ini", "time_shift_1", "time_shift_2", "beta_0", "beta_1", "beta_2", "scaled_wane", "log_delta")
+rownames(proposal_matrix) <- c("log_A_ini", "time_shift_1", "time_shift_2", "beta_0", "beta_1", "beta_2", "log_delta")
+colnames(proposal_matrix) <- c("log_A_ini", "time_shift_1", "time_shift_2", "beta_0", "beta_1", "beta_2", "log_delta")
 
 mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = proposal_matrix, transform = transform)
 
@@ -96,7 +61,8 @@ mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal =
 # pmcmc_run <- mcstate::pmcmc(mcmc_pars, filter_deterministic, control = control)
 
 # Directory for saving the outputs
-dir.create("outputs", FALSE, TRUE)
+dir.create("outputs/main/seasonality_nowaning", FALSE, TRUE)
+dir.create("pictures/main/seasonality_nowaning", FALSE, TRUE)
 
 # Trial combine pMCMC + tuning #################################################
 pmcmc_run_plus_tuning <- function(n_particles, n_steps){
@@ -124,36 +90,43 @@ pmcmc_run_plus_tuning <- function(n_particles, n_steps){
   # The pmcmc
   pmcmc_result <- mcstate::pmcmc(mcmc_pars, filter_deterministic, control = control)
   pmcmc_result
-  saveRDS(pmcmc_result, "outputs/pmcmc_result.rds")
+  saveRDS(pmcmc_result, "outputs/main/seasonality_nowaning/pmcmc_result.rds")
   
   new_proposal_mtx <- cov(pmcmc_result$pars)
-  write.csv(new_proposal_mtx, "outputs/new_proposal_mtx.csv", row.names = TRUE)
+  write.csv(new_proposal_mtx, "outputs/main/seasonality_nowaning/new_proposal_mtx.csv", row.names = TRUE)
   
   lpost_max <- which.max(pmcmc_result$probabilities[, "log_posterior"])
   write.csv(as.list(pmcmc_result$pars[lpost_max, ]),
-            "outputs/initial.csv", row.names = FALSE)
+            "outputs/main/seasonality_nowaning/initial.csv", row.names = FALSE)
   
   # Further processing for thinning chains
   mcmc1 <- pmcmc_further_process(n_steps, pmcmc_result)
-  write.csv(mcmc1, "outputs/mcmc1.csv", row.names = TRUE)
+  write.csv(mcmc1, "outputs/main/seasonality_nowaning/mcmc1.csv", row.names = TRUE)
   
   # Calculating ESS & Acceptance Rate
   calc_ess <- ess_calculation(mcmc1)
-  write.csv(calc_ess, "outputs/calc_ess.csv", row.names = TRUE)
+  write.csv(calc_ess, "outputs/main/seasonality_nowaning/calc_ess.csv", row.names = TRUE)
   
-  # Figures! (still failed, margin error)
+  # Figures!
+  png("pictures/main/seasonality_nowaning/mcmc1.png", width = 21, height = 30, unit = "cm", res = 800)
+  par(mfrow = c(5, 2), mar = c(3, 3, 1, 1), mgp = c(1.7, 0.7, 0), bty = "n")
+  pmcmc_trace(pmcmc_result$probabilities)
+  dev.off()
+  
+  # Temporary pdf file 
   fig <- pmcmc_trace(mcmc1)
+  
   
   Sys.sleep(10) # wait 10 secs before conducting tuning
   
   # New proposal matrix
-  new_proposal_matrix <- as.matrix(read.csv("outputs/new_proposal_mtx.csv"))
+  new_proposal_matrix <- as.matrix(read.csv("outputs/main/seasonality_nowaning/new_proposal_mtx.csv"))
   new_proposal_matrix <- new_proposal_matrix[, -1]
   new_proposal_matrix <- apply(new_proposal_matrix, 2, as.numeric)
   new_proposal_matrix <- new_proposal_matrix/100 # Lilith's suggestion
   new_proposal_matrix <- (new_proposal_matrix + t(new_proposal_matrix)) / 2
-  rownames(new_proposal_matrix) <- c("log_A_ini", "time_shift_1", "time_shift_2", "beta_0", "beta_1", "beta_2", "scaled_wane", "log_delta")
-  colnames(new_proposal_matrix) <- c("log_A_ini", "time_shift_1", "time_shift_2", "beta_0", "beta_1", "beta_2", "scaled_wane", "log_delta")
+  rownames(new_proposal_matrix) <- c("log_A_ini", "time_shift_1", "time_shift_2", "beta_0", "beta_1", "beta_2", "log_delta")
+  colnames(new_proposal_matrix) <- c("log_A_ini", "time_shift_1", "time_shift_2", "beta_0", "beta_1", "beta_2", "log_delta")
   # isSymmetric(new_proposal_matrix)
   
   tune_mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal = new_proposal_matrix, transform = transform)
@@ -175,17 +148,11 @@ pmcmc_run_plus_tuning <- function(n_particles, n_steps){
                                                                                        adapt_end = Inf
                                          ))
   
-  filter <- mcstate::particle_filter$new(data = sir_data,
-                                         model = gen_sir, # Use odin.dust input
-                                         n_particles = n_particles,
-                                         compare = case_compare,
-                                         seed = 1L
-                                         )
   
-  # The pmcmc
+  # The pmcmc tuning
   tune_pmcmc_result <- mcstate::pmcmc(tune_mcmc_pars, filter_deterministic, control = tune_control)
   tune_pmcmc_result
-  saveRDS(tune_pmcmc_result, "outputs/tune_pmcmc_result.rds")
+  saveRDS(tune_pmcmc_result, "outputs/main/seasonality_nowaning/tune_pmcmc_result.rds")
   
   tune_lpost_max <- which.max(tune_pmcmc_result$probabilities[, "log_posterior"])
   mcmc_lo_CI <- apply(tune_pmcmc_result$pars, 2, function(x) quantile(x, probs = 0.025))
@@ -196,40 +163,56 @@ pmcmc_run_plus_tuning <- function(n_particles, n_steps){
   colnames(t_tune_initial) <- c("values", "low_CI", "high_CI")
   
   write.csv(t_tune_initial,
-            "outputs/tune_initial_with_CI.csv", row.names = FALSE)
+            "outputs/main/seasonality_nowaning/tune_initial_with_CI.csv", row.names = FALSE)
   
   # Further processing for thinning chains
   mcmc2 <- tuning_pmcmc_further_process(n_steps, tune_pmcmc_result)
   # mcmc2 <- coda::as.mcmc(cbind(
   #   tune_pmcmc_result$probabilities, tune_pmcmc_result$pars))
-  write.csv(mcmc2, "outputs/mcmc2.csv", row.names = TRUE)
+  write.csv(mcmc2, "outputs/main/seasonality_nowaning/mcmc2.csv", row.names = TRUE)
   
   # Calculating ESS & Acceptance Rate
   tune_calc_ess <- ess_calculation(mcmc2)
-  write.csv(tune_calc_ess, "outputs/tune_calc_ess.csv", row.names = TRUE)
+  write.csv(tune_calc_ess, "outputs/main/seasonality_nowaning/tune_calc_ess.csv", row.names = TRUE)
   
-  # Figures! (still failed, margin error)
+  # Figures!
+  png("pictures/main/seasonality_nowaning/mcmc2.png", width = 21, height = 30, unit = "cm", res = 800)
+  par(mfrow = c(5, 2), mar = c(3, 3, 1, 1), mgp = c(1.7, 0.7, 0), bty = "n")
+  pmcmc_trace(mcmc2)
+  dev.off()
+  
+  # Temporary pdf file 
   fig <- pmcmc_trace(mcmc2)
+  
   
   ##############################################################################
   # MCMC Diagnostics
   
   # 1. Gelman-Rubin Diagnostic
   # https://cran.r-project.org/web/packages/coda/coda.pdf
-  # png("pictures/diag_gelman_rubin.png", width = 17, height = 12, unit = "cm", res = 1200)
   figs_gelman_init <- diag_init_gelman_rubin(tune_pmcmc_result)
-  fig <- diag_cov_mtx(figs_gelman_init)
-  fig <- diag_gelman_rubin(figs_gelman_init)
+  figs_gelman_cov <- diag_cov_mtx(figs_gelman_init)
+  
+  # png("pictures/main/seasonality_nowaning/gelman_rubin.png", width = 21, height = 30, unit = "cm", res = 800)
+  # par(mfrow = c(5, 2), mar = c(3, 3, 1, 1), mgp = c(1.7, 0.7, 0), bty = "n", ask = F)
+  # save_gelman_plots(figs_gelman_init, 10)
   # dev.off()
+  
+  # Temporary pdf file 
+  fig <- diag_gelman_rubin(figs_gelman_init)
   
   # 2. Autocorrelation
-  # png("pictures/diag_aucorr.png", width = 17, height = 12, unit = "cm", res = 1200)
-  fig <- diag_aucorr(mcmc2)
+  # png("pictures/main/seasonality_nowaning/autocorrelation.png", width = 21, height = 30, unit = "cm", res = 800)
+  # par(mfrow = c(5, 2), mar = c(3, 3, 1, 1), mgp = c(1.7, 0.7, 0), bty = "n", ask = F)
+  # diag_aucorr(mcmc2)
   # dev.off()
   
-  # png("pictures/diag_ggpairs.png", width = 17, height = 12, unit = "cm", res = 1200)
-  fig <- GGally::ggpairs(as.data.frame(tune_pmcmc_result$pars))
-  # dev.off()
+  # Temporary pdf file 
+  fig <- diag_aucorr(mcmc2)
+  
+  png("pictures/main/seasonality_nowaning/ggpairs.png", width = 20, height = 20, unit = "cm", res = 800)
+  GGally::ggpairs(as.data.frame(tune_pmcmc_result$pars))
+  dev.off()
   
 }
 
