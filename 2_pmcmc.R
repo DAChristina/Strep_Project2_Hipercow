@@ -62,7 +62,7 @@ mcmc_pars <- prepare_parameters(initial_pars = pars, priors = priors, proposal =
 
 # Directory for saving the outputs
 dir.create("outputs/main/seasonality_nowaning", FALSE, TRUE)
-dir.create("pictures/main/seasonality_nowaning", FALSE, TRUE)
+# dir.create("pictures/main/seasonality_nowaning", FALSE, TRUE)
 
 # Trial combine pMCMC + tuning #################################################
 pmcmc_run_plus_tuning <- function(n_particles, n_steps){
@@ -108,10 +108,10 @@ pmcmc_run_plus_tuning <- function(n_particles, n_steps){
   write.csv(calc_ess, "outputs/main/seasonality_nowaning/calc_ess.csv", row.names = TRUE)
   
   # Figures!
-  png("pictures/main/seasonality_nowaning/mcmc1.png", width = 21, height = 30, unit = "cm", res = 800)
-  par(mfrow = c(5, 2), mar = c(3, 3, 1, 1), mgp = c(1.7, 0.7, 0), bty = "n")
-  pmcmc_trace(pmcmc_result$probabilities)
-  dev.off()
+  # png("pictures/main/seasonality_nowaning/mcmc1.png", width = 21, height = 30, unit = "cm", res = 800)
+  # par(mfrow = c(5, 2), mar = c(3, 3, 1, 1), mgp = c(1.7, 0.7, 0), bty = "n")
+  # pmcmc_trace(pmcmc_result$probabilities)
+  # dev.off()
   
   # Temporary pdf file 
   fig <- pmcmc_trace(mcmc1)
@@ -176,10 +176,10 @@ pmcmc_run_plus_tuning <- function(n_particles, n_steps){
   write.csv(tune_calc_ess, "outputs/main/seasonality_nowaning/tune_calc_ess.csv", row.names = TRUE)
   
   # Figures!
-  png("pictures/main/seasonality_nowaning/mcmc2.png", width = 21, height = 30, unit = "cm", res = 800)
-  par(mfrow = c(5, 2), mar = c(3, 3, 1, 1), mgp = c(1.7, 0.7, 0), bty = "n")
-  pmcmc_trace(mcmc2)
-  dev.off()
+  # png("pictures/main/seasonality_nowaning/mcmc2.png", width = 21, height = 30, unit = "cm", res = 800)
+  # par(mfrow = c(5, 2), mar = c(3, 3, 1, 1), mgp = c(1.7, 0.7, 0), bty = "n")
+  # pmcmc_trace(mcmc2)
+  # dev.off()
   
   # Temporary pdf file 
   fig <- pmcmc_trace(mcmc2)
@@ -210,9 +210,9 @@ pmcmc_run_plus_tuning <- function(n_particles, n_steps){
   # Temporary pdf file 
   fig <- diag_aucorr(mcmc2)
   
-  png("pictures/main/seasonality_nowaning/ggpairs.png", width = 20, height = 20, unit = "cm", res = 800)
-  GGally::ggpairs(as.data.frame(tune_pmcmc_result$pars))
-  dev.off()
+  # png("pictures/main/seasonality_nowaning/ggpairs.png", width = 20, height = 20, unit = "cm", res = 800)
+  # GGally::ggpairs(as.data.frame(tune_pmcmc_result$pars))
+  # dev.off()
   
 }
 
