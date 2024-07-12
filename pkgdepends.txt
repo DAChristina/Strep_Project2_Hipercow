@@ -10,7 +10,11 @@ odin.dust
 coda
 dust
 ape
+magnittr
+BiocManager
+BiocManager::ggtree
 
 epiforecasts/socialmixr
 ggobi/ggally
 xavierdidelot/BactDating
+emvolz-phylodynamics/mlesky
