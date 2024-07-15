@@ -171,7 +171,8 @@ ggplot(all_year, aes(x = year, y = counts)) +
              fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
   ggtitle("The Counts of Serotype 1 in England") +
   xlab("Year") +
-  ylab("Serotype 1 Cases")
+  ylab("Serotype 1 Cases") +
+  theme_bw()
 dev.off()
 
 # Viz incidence
@@ -194,7 +195,8 @@ ggplot(all_combined, aes(x = year, y = Conf_Int$proportion*100000)) +
              fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
   ggtitle("The Incidence of Serotype 1 in England \n(per 100,000)") +
   xlab("Year") +
-  ylab("Serotype 1 Incidence")
+  ylab("Serotype 1 Incidence") +
+  theme_bw()
 dev.off()
 
 
@@ -237,7 +239,8 @@ ggplot(all_ageGroup2, aes(x = year, y = counts, group = ageGroup2,
              fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
   ggtitle("The Counts of Serotype 1 in England by Demographic Groups") +
   xlab("Year") +
-  ylab("Serotype 1 Cases")
+  ylab("Serotype 1 Cases") +
+  theme_bw()
 dev.off()
 
 # Viz incidence
@@ -265,7 +268,8 @@ ggplot(all_ageGroup2, aes(x = year, y = Conf_Int$proportion*100000, group = ageG
              fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
   ggtitle("The Incidence of Serotype 1 in England \nby Demographic Groups (per 100,000)") +
   xlab("Year") +
-  ylab("Serotype 1 Incidence")
+  ylab("Serotype 1 Incidence") +
+  theme_bw()
 dev.off()
 
 # CI calculations for 5 ageGroups
@@ -307,7 +311,8 @@ ggplot(all_ageGroup5, aes(x = year, y = counts, group = ageGroup,
              fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
   ggtitle("The Counts of Serotype 1 in England by Demographic Groups") +
   xlab("Year") +
-  ylab("Serotype 1 Cases")
+  ylab("Serotype 1 Cases") +
+  theme_bw()
 dev.off()
 
 # Viz incidence
@@ -335,7 +340,8 @@ ggplot(all_ageGroup5, aes(x = year, y = Conf_Int$proportion*100000, group = ageG
              fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
   ggtitle("The Incidence of Serotype 1 in England \nby Demographic Groups (per 100,000)") +
   xlab("Year") +
-  ylab("Serotype 1 Incidence")
+  ylab("Serotype 1 Incidence") +
+  theme_bw()
 dev.off()
 
 # CI calculations for 7 ageGroup7s
@@ -377,7 +383,8 @@ ggplot(all_ageGroup7, aes(x = year, y = counts, group = ageGroup7,
              fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
   ggtitle("The Counts of Serotype 1 in England by Demographic Groups") +
   xlab("Year") +
-  ylab("Serotype 1 Cases")
+  ylab("Serotype 1 Cases") +
+  theme_bw()
 dev.off()
 
 # Viz incidence
@@ -405,7 +412,8 @@ ggplot(all_ageGroup7, aes(x = year, y = Conf_Int$proportion*100000, group = ageG
              fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
   ggtitle("The Incidence of Serotype 1 in England \nby Demographic Groups (per 100,000)") +
   xlab("Year") +
-  ylab("Serotype 1 Incidence")
+  ylab("Serotype 1 Incidence") +
+  theme_bw()
 dev.off()
 
 # Basic case count data without age structure or regions
@@ -508,7 +516,8 @@ ggplot(Nat_weekly, aes(as.Date(weeks))) +
   ) +
   ggtitle("The Counts of Serotype 1 in England") +
   xlab("Year") +
-  ylab("Serotype 1 Cases (Aggregated by Week)")
+  ylab("Serotype 1 Cases (Aggregated by Week)") +
+  theme_bw()
 dev.off()
 
 ## 2. Data Fitting #############################################################
@@ -613,52 +622,88 @@ freq_clades <- joined_clades %>%
   dplyr::select(clade,year,Frequency, Count, Prop, Conf_Int, current.region.name) %>%
   dplyr::distinct()
 
-ggplot(freq_clades,
-       aes(x = year, y = Frequency,
-           colour = clade,
-           fill = clade)) +
-  geom_line() +
-  geom_errorbar(aes(ymin = Conf_Int$lower, ymax = Conf_Int$upper),
-                width = .05) +
+clades_map <- c("clade1" = "steelblue",
+                "clade2" = "darkgreen",
+                "clade3" = "red")
+
+png("pictures/GPSC31_clades.png", width = 17, height = 12, unit = "cm", res = 1200)
+ggplot(freq_clades, aes(x = year, y = Frequency, group = clade,
+                        color = clade)) +
+  geom_line(size = 1.5) +
   geom_vline(data = vaccine_UK, aes(xintercept = year),
              linetype = "dashed") +
+  scale_color_manual(values = c(clades_map),
+                        name = "GPSC31 Clades",
+                        breaks = c("clade1", "clade2", "clade3"),
+                        labels = c("Clade 1", "Clade 2", "Clade 3")) +
+  geom_errorbar(aes(ymin = Conf_Int$lower, ymax = Conf_Int$upper),
+                width = .05) +
   geom_label(aes(label = Count),
              # fill = "white",
              color = "black",
              nudge_y = 0.001,
              nudge_x = 0.05) +
   scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
-  geom_label(aes(x = 2006, y = 0.15, label = "PCV7"),
+  geom_label(aes(x = 2006, y = 0.18, label = "PCV7"),
              fill = "white", color = "black") +
-  geom_label(aes(x = 2011, y = 0.15, label = "PCV13"),
+  geom_label(aes(x = 2011, y = 0.18, label = "PCV13"),
              fill = "white", color = "black") +
+  ggtitle("The Frequency of GPSC31 Clades in England") +
+  xlab("Year") +
+  ylab("Frequency") +
   theme_bw()
+dev.off()
 
 max_freq_region <- freq_clades %>% 
   dplyr::group_by(year, clade) %>%
   dplyr::arrange(desc(Frequency)) %>%
   dplyr::slice(1)
 
-ggplot(max_freq_region,
-       aes(x = year, y = Frequency,
-           colour = clade,
-           fill = clade)) +
-  geom_line() +
-  geom_errorbar(aes(ymin = Conf_Int$lower, ymax = Conf_Int$upper),
-                width = .05) +
+# Edit name & manually add the label later
+max_freq_region <- max_freq_region %>% 
+  dplyr::mutate(current.region.name = case_when(
+    year == 2014 ~ "0",
+    TRUE ~ current.region.name
+    ))
+
+png("pictures/GPSC31_clades_with_maxregion.png", width = 25, height = 12, unit = "cm", res = 1200)
+ggplot(max_freq_region, aes(x = year, y = Frequency, group = clade,
+                            color = clade)) +
+  geom_line(size = 1.5) +
   geom_vline(data = vaccine_UK, aes(xintercept = year),
              linetype = "dashed") +
-  geom_label(aes(label = paste0(Count, current.region.name)),
+  scale_color_manual(values = c(clades_map),
+                     name = "GPSC31 Clades",
+                     breaks = c("clade1", "clade2", "clade3"),
+                     labels = c("Clade 1", "Clade 2", "Clade 3")) +
+  geom_errorbar(aes(ymin = Conf_Int$lower, ymax = Conf_Int$upper),
+                width = .05) +
+  geom_label(aes(label = paste0(Count, " (", current.region.name, ")")),
              # fill = "white",
+             size = 2.3,
              color = "black",
-             nudge_y = 0.001,
-             nudge_x = 0.05) +
+             # nudge_y = 0.001,
+             # nudge_x = 0.25,
+             position=position_jitter()) +
+  # Mannually add label for 2014 (overlapped data):
+  geom_label(label="4 (South West)\n4 (East Midlands)", 
+    x=2014, y=0.0689,
+    label.padding = unit(0.55, "lines"),
+    size = 2.3,
+    color = "black",
+    nudge_y = 0.001,
+    nudge_x = 0.55
+  ) +
   scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
-  geom_label(aes(x = 2006, y = 0.15, label = "PCV7"),
+  geom_label(aes(x = 2006, y = 0.18, label = "PCV7"),
              fill = "white", color = "black") +
-  geom_label(aes(x = 2011, y = 0.15, label = "PCV13"),
+  geom_label(aes(x = 2011, y = 0.18, label = "PCV13"),
              fill = "white", color = "black") +
+  ggtitle("The Frequency of GPSC31 Clades in England") +
+  xlab("Year") +
+  ylab("Frequency") +
   theme_bw()
+dev.off()
 
 ## 6. Data Preparation for Microreact ##########################################
 # Load dat_G first.
@@ -677,31 +722,8 @@ write.csv(tre_names, "raw_data/gubbins/GPSC2_n7/phandango_microreact_check/micro
 ## 7. Some Stats Analysis Between Clades #######################################
 joined_clades <- read.csv("raw_data/gubbins/n739/phandango_microreact_check/microreact_tre_names.csv")
 
-# GPSCs vs. ages
-anova_GPSCs <- aov(ageLabel ~ GPSC, data = joined_clades)
-summary(anova_GPSCs)
-# > summary(anova_GPSCs)
-# Df Sum Sq Mean Sq F value Pr(>F)
-# GPSC          1     57    57.0   0.097  0.755
-# Residuals   731 429044   586.9               
-# 3342 observations deleted due to missingness
-# No statistically significant differences in the mean ages across GPSCs (Pr = 0.324).
-
-
-# GPSC31 Clade vs. ages
-anova_clade_GPSC31 <- aov(ageLabel ~ clade, data = joined_clades)
-summary(anova_clade_GPSC31)
-# > summary(anova_clade_GPSC31)
-# Df Sum Sq Mean Sq F value Pr(>F)
-# clade         2   1321   660.4   1.129  0.324
-# Residuals   688 402409   584.9               
-# 3384 observations deleted due to missingness
-# No statistically significant differences in the mean ages across clades (Pr = 0.324).
-
-
 # GPSCs vs. regions 
-chi_GPSC <- chisq.test(table(joined_clades$current.region.name, joined_clades$GPSC))
-print(chi_GPSC)
+chisq.test(table(joined_clades$current.region.name, joined_clades$GPSC))
 # data:  table(joined_clades$current.region.name, joined_clades$GPSC)
 # X-squared = 13.979, df = 8, p-value = 0.08231
 
@@ -710,36 +732,114 @@ chi_region <- chisq.test(table(joined_clades$current.region.name, joined_clades$
 print(chi_region)
 # data:  table(joined_clades$current.region.name, joined_clades$clade)
 # X-squared = 48.53, df = 16, p-value = 3.92e-05
-
 # Post-hoc
 std_resid_region <- chi_region$stdres
 print(std_resid_region)
+# Whether a mosaic plot is the best way to viz the distribution of clades (not related to year)
 mosaicplot(table(joined_clades$current.region.name, joined_clades$clade),
            main = "Mosaic Plot of Region and GPSC31 Clades", shade = TRUE, legend = TRUE)
 
-# Create barplot of region and clades:
+# Create barplot of region vs. clades:
 filtered_NA <- joined_clades %>% 
   dplyr::filter(!is.na(current.region.name),
                 !is.na(clade),
                 !is.na(year))
 filtered_NA_counts <- filtered_NA %>%
-  group_by(year, current.region.name, clade) %>%
-  summarise(count = n()) %>%
-  ungroup()
+  dplyr::group_by(year, current.region.name, clade) %>%
+  dplyr::summarise(count = n()) %>%
+  dplyr::ungroup()
+clades_combined <- merge(filtered_NA_counts, pop_year,
+                         by.x = c("year"),
+                         by.y = c("Year")) %>%
+  # Epitools take long time to compile!
+  # dplyr::mutate(Conf_Int = epitools::binom.exact(count, PopSize),
+  #               incid_clades_year = Conf_Int$proportion) # per-100,000 population
+  dplyr::mutate(incid_clades_year = count/PopSize)
 
+# Counts
+png("pictures/GPSC31_counts_by_region.png", width = 25, height = 17, unit = "cm", res = 1200)
 ggplot(filtered_NA_counts, aes(x = year, y = count, colour = clade)) +
-  geom_line() +
-  labs(title = "Count of Clades by Region",
-       x = "Region",
-       y = "Counts",
-       fill = "Clades of GPSC31") +
-  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
-  facet_wrap(~ current.region.name, scales = "free") +
-  # annotate("text", x = 2006, y = 5, label = "PCV7") +
-  # annotate("text", x = 2011, y = 5, label = "PCV13") +
+  geom_line(size = 1.5) +
+  scale_color_manual(values = c(clades_map),
+                     name = "GPSC31 Clades",
+                     breaks = c("clade1", "clade2", "clade3"),
+                     labels = c("Clade 1", "Clade 2", "Clade 3")) +
   annotate("segment", x = 2006, xend = 2006, y = -Inf, yend = Inf, linetype = "dashed") +
   annotate("segment", x = 2011, xend = 2011, y = -Inf, yend = Inf, linetype = "dashed") +
-  theme_minimal()
+  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+  facet_wrap(~ current.region.name, scales = "free") +
+  labs(title = "Count of GPSC31 Clades by Region",
+       x = "Year",
+       y = "Counts",
+       fill = "Clades of GPSC31") +
+  theme_bw()
+dev.off()
+
+# Clade frequency per year only
+png("pictures/GPSC31_freq_by_year_only.png", width = 25, height = 17, unit = "cm", res = 1200)
+ggplot(clades_combined, aes(x = year, y = incid_clades_year*100000, colour = clade)) +
+  geom_line(size = 1.5) +
+  # Epitools takes long time to compile!
+  # geom_errorbar(aes(ymin = Conf_Int$lower*100000, ymax = Conf_Int$upper*100000), # It doesn't matter whether I add the CI or not because the Pop data is quite huge, I suppose (?)
+  #               width = .1) +
+  scale_color_manual(values = c(clades_map),
+                     name = "GPSC31 Clades",
+                     breaks = c("clade1", "clade2", "clade3"),
+                     labels = c("Clade 1", "Clade 2", "Clade 3")) +
+  annotate("segment", x = 2006, xend = 2006, y = -Inf, yend = Inf, linetype = "dashed") +
+  annotate("segment", x = 2011, xend = 2011, y = -Inf, yend = Inf, linetype = "dashed") +
+  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+  facet_wrap(~ current.region.name, scales = "free") +
+  labs(title = "The Frequency of GPSC31 per Year in England \nby Regions (per 100,000)",
+       x = "Year",
+       y = "Frequency per Year",
+       fill = "Clades of GPSC31") +
+  theme_bw()
+dev.off()
+
+# Clade frequency per year, region
+pop_reg <- pop_l %>% 
+  dplyr::group_by(Year, Region) %>% 
+  dplyr::summarise(PopSize = sum(PopSize), .groups="keep") %>% 
+  dplyr::ungroup()
+clades_combined_region <- merge(filtered_NA_counts, pop_reg,
+                                by.x = c("year", "current.region.name"),
+                                by.y = c("Year", "Region")) %>%
+  # Epitools takes long time to compile!
+  # dplyr::mutate(Conf_Int = epitools::binom.exact(count, PopSize),
+  #               incid_clades_year_reg = Conf_Int$proportion) # per-100,000 population
+  dplyr::mutate(incid_clades_year_reg = count/PopSize)
+
+# Population Growth CheckPoint!
+# ggplot(pop_reg, aes(x = Year, y = PopSize, colour = Region)) +
+#   geom_line() +
+#   facet_wrap(~ Region, scales = "free")
+# pop_test <- pop_reg %>% 
+#   dplyr::group_by(Year) %>% 
+#   dplyr::summarise(PopSize = sum(PopSize)) %>% 
+#   dplyr::ungroup() %>% 
+# pop_year # compare
+
+png("pictures/GPSC31_freq_by_year_region.png", width = 25, height = 17, unit = "cm", res = 1200)
+ggplot(clades_combined_region, aes(x = year, y = incid_clades_year_reg*100000, colour = clade)) +
+  geom_line(size = 1.5) +
+  # Epitools take long time to compile!
+  # geom_errorbar(aes(ymin = Conf_Int$lower*100000, ymax = Conf_Int$upper*100000), # It doesn't matter whether I add the CI or not because the Pop data is quite huge, I suppose (?)
+  #               width = .1) +
+  scale_color_manual(values = c(clades_map),
+                     name = "GPSC31 Clades",
+                     breaks = c("clade1", "clade2", "clade3"),
+                     labels = c("Clade 1", "Clade 2", "Clade 3")) +
+  annotate("segment", x = 2006, xend = 2006, y = -Inf, yend = Inf, linetype = "dashed") +
+  annotate("segment", x = 2011, xend = 2011, y = -Inf, yend = Inf, linetype = "dashed") +
+  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+  facet_wrap(~ current.region.name, scales = "free") +
+  labs(title = "The Frequency of GPSC31 in England \nby Regions (per 100,000)",
+       x = "Year",
+       y = "Frequency per Year & Region",
+       fill = "Clades of GPSC31") +
+  theme_bw()
+dev.off()
 
 # GPSCs vs. vaccination era
 chi_vacc_GPSCs <- chisq.test(table(joined_clades$vacc, joined_clades$GPSC))
@@ -759,8 +859,29 @@ print(std_resid_vacc_clades)
 mosaicplot(table(joined_clades$vacc, joined_clades$clade),
            main = "Mosaic Plot of Region and GPSC31 Clades", shade = TRUE, legend = TRUE)
 
-# Other not-significant results:
+# Other non-statistically significant results: #################################
 # GPSCs vs. ages
+anova_GPSCs <- aov(ageLabel ~ GPSC, data = joined_clades)
+summary(anova_GPSCs)
+# > summary(anova_GPSCs)
+# Df Sum Sq Mean Sq F value Pr(>F)
+# GPSC          1     57    57.0   0.097  0.755
+# Residuals   731 429044   586.9               
+# 3342 observations deleted due to missingness
+# No statistically significant differences in the mean ages across GPSCs (Pr = 0.324).
+
+
+# GPSC31 Clade vs. ages
+anova_clade_GPSC31 <- aov(ageLabel ~ clade, data = joined_clades)
+summary(anova_clade_GPSC31)
+# > summary(anova_clade_GPSC31)
+# Df Sum Sq Mean Sq F value Pr(>F)
+# clade         2   1321   660.4   1.129  0.324
+# Residuals   688 402409   584.9               
+# 3384 observations deleted due to missingness
+# No statistically significant differences in the mean ages across clades.
+
+# GPSCs vs. age groups
 chisq.test(table(joined_clades$ageGroup2, joined_clades$GPSC))
 chisq.test(table(joined_clades$ageGroup, joined_clades$GPSC))
 chisq.test(table(joined_clades$ageGroup7, joined_clades$GPSC))
@@ -770,13 +891,11 @@ chisq.test(table(joined_clades$MeningitisFlag, joined_clades$GPSC))
 # GPSCs vs. death
 # Highly correlated!(significance but nonsense coz' all death driven by GPSC31)
 chi_death_GPSCs <- chisq.test(table(joined_clades$X30daydeath, joined_clades$GPSC))
-
 # Post-hoc
 std_resid_death_GPSCs <- chi_death_GPSCs$stdres
 print(std_resid_death_GPSCs)
 mosaicplot(table(joined_clades$X30daydeath, joined_clades$GPSC),
-           main = "Mosaic Plot of Region and GPSC31 Clades", shade = TRUE, legend = TRUE)
-
+           main = "Mosaic Plot", shade = TRUE, legend = TRUE)
 
 # GPSC31 Clade vs. ages
 chisq.test(table(joined_clades$ageGroup2, joined_clades$clade))

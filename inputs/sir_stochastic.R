@@ -24,7 +24,7 @@ scaled_wane <- user(0)
 # https://fingertips.phe.org.uk/search/PPV#page/4/gid/1/pat/159/par/K02000001/ati/15/are/E92000001/iid/30313/age/27/sex/4/cat/-1/ctp/-1/yrr/1/cid/4/tbm/1
 # vacc_elderly <- 0.7*0.57 # FIXED PPV23 vaccination coverage * efficacy
 # ratio of vaccinated elderly for >64 y.o. people, averaged 69.7243% ~ 70%
-vacc <- 0.9*0.862*0.02 # FIXED PCV13 vaccination coverage * efficacy * proportion of kids below 2 y.o.
+vacc <- user(0.9*0.862*0.02) # FIXED PCV13 vaccination coverage * efficacy * proportion of kids below 2 y.o.
 # ratio of vaccinated kids, averaged 90%
 # vacc <- (vacc_elderly + vacc_kids)/2 # FIXED, average
 
