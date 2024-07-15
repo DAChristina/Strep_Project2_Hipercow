@@ -27,8 +27,8 @@ hipercow_provision()
 # hipercow_provision()
 
 # https://mrc-ide.github.io/hipercow/reference/hipercow_resources.html
-resources <- hipercow::hipercow_resources(cores = 20,
-                                          max_runtime = "3d",
+resources <- hipercow::hipercow_resources(cores = 32,
+                                          max_runtime = "30d",
                                           memory_per_node = "64G",
 )
 
