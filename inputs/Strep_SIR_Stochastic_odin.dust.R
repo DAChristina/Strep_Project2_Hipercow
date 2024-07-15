@@ -171,26 +171,36 @@ ggplot(data_plus_model, aes(as.Date(weeks))) +
 
 
 # Additional plot S, A, R ######################################################
-# Daily cases
+# Daily cases (separated)
 par(mfrow = c(2,2), mar = c(5.1, 5.1, 0.5, 0.5), mgp = c(3.5, 1, 0), las = 1)
+cols <- c(S = "#8c8cd9", A = "darkred", D = "orange", R = "#999966", n_AD_daily = "#cc0099", n_AD_cumul = "green")
+matplot(time, t(x[1, , ]), type = "l",
+        xlab = "Time", ylab = "Susceptible",
+        col = cols[["S"]], lty = 1)
+
+matplot(time, t(x[2, , ]), type = "l",
+        xlab = "Time", ylab = "Asymptomatic",
+        col = cols[["A"]], lty = 1)
+
+matplot(time, t(x[5, , ]), type = "l",
+        xlab = "Time", ylab = "Diseased",
+        col = cols[["n_AD_daily"]], lty = 1)
+
+matplot(time, t(x[4, , ]), type = "l",
+        xlab = "Time", ylab = "Recovered",
+        col = cols[["R"]], lty = 1)
+par(mfrow = c(1,1))
+
+# Daily cases (combined, not recommended because even Asymptomatic cases can't be seen)
+par(mfrow = c(1,1), mar = c(5.1, 5.1, 0.5, 0.5), mgp = c(3.5, 1, 0), las = 1)
 cols <- c(S = "#8c8cd9", A = "darkred", D = "orange", R = "#999966", n_AD_daily = "#cc0099", n_AD_cumul = "green")
 matplot(time, t(x[1, , ]), type = "l",
         xlab = "Time", ylab = "Number of individuals",
         col = cols[["S"]], lty = 1)
+matlines(time, t(x[2, , ]), type = "l", col = cols[["A"]])
+matlines(time, t(x[3, , ]), type = "l", col = cols[["D"]])
+matlines(time, t(x[4, , ]), type = "l", col = cols[["R"]])
 
-matplot(time, t(x[2, , ]), type = "l",
-        xlab = "Time", ylab = "Number of individuals",
-        col = cols[["A"]], lty = 1)
-
-matplot(time, t(x[5, , ]), type = "l",
-        xlab = "Time", ylab = "Number of individuals",
-        col = cols[["n_AD_daily"]], lty = 1)
-
-matplot(time, t(x[4, , ]), type = "l",
-        xlab = "Time", ylab = "Number of individuals",
-        col = cols[["R"]], lty = 1)
-
-par(mfrow = c(1,1))
 
 
 # Toy data creation ############################################################
