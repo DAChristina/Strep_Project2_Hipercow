@@ -3,12 +3,13 @@ library(ape)
 library(mlesky)
 library(tidyverse)
 
-if (!require("BiocManager", quietly = TRUE))
+if (!require("BiocManager", quietly = TRUE)){
   install.packages("BiocManager")
+  BiocManager::install("ggtree")
+}
 
-BiocManager::install("ggtree")
 
-# Functions
+# Functions ####################################################################
 mod_parboot <-
   function (fit, nrep = 200, ncpu = 1, dd) 
   {
@@ -221,29 +222,30 @@ calculate_CIs <-
   }
 
 # Load
+mcmc_bacdating <- read_rds("outputs/genomics/choosen_n703/method_strictgamma_1e6/mcmc_bacdating.rds")
+
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 4) {
   quit(1)
 }
-bactdating_obj <- readRDS(args[1])
+
+bactdating_obj <- mcmc_bacdating[1]
+# bactdating_obj <- readRDS(args[1])
+
 model_index <- as.integer(args[2])
 adapt_val <- ifelse(args[3] == "TRUE",TRUE,FALSE)
 threads <- as.integer(args[4])
 
 # Get strain names
 strain_name <-
-  ifelse(grepl("GPSC26",args[1]),
-         "GPSC26",
-         ifelse(
-           grepl("GPSC32",args[1]),
-           "GPSC32",
-           "GPSC55")
+  ifelse(grepl("GPSC31",args[1]),
+         "GPSC31",
+         "GPSC2"
   )
 
 most_recent_date <- list()
-most_recent_date[["GPSC26"]] <- 2021.989041
-most_recent_date[["GPSC32"]] <- 2022.221918
-most_recent_date[["GPSC55"]] <- 2022.224658
+most_recent_date[["GPSC31"]] <- 2021.989041
+most_recent_date[["GPSC2"]] <- 2022.221918
 
 message(paste("Strain:",strain_name," Model index: ",model_index," Adaptation: ",adapt_val))
 
