@@ -46,6 +46,18 @@ task_log_show(id_single_plus_tuning)
 task_info(id_single_plus_tuning)
 task_info(id_single_plus_tuning)$times
 
+hipercow_environment_create(sources = "inputs/Strep_SIR_Stochastic_odin.dust_generate_pics.R")
+options(hipercow.max_size_local = Inf)
+id_gen_pics <- task_create_expr(generate_pics_model(daily_joined),
+                                          resources = resources
+)
+
+task_status(id_gen_pics)
+task_result(id_gen_pics)
+task_log_show(id_gen_pics)
+task_info(id_gen_pics)
+task_info(id_gen_pics)$times
+
 
 
 # Trial parallel job submission:

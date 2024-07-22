@@ -1,9 +1,10 @@
 
+library(tidyverse)
 library(odin.dust)
 gen_sir <- odin.dust::odin_dust("inputs/sir_stochastic.R")
 
 # Running the SIR model with dust (parameters consisting of value, lo_CI, hi_CI)
-results <- read.csv("outputs/main/seasonality_waning[-4, -0.5]_nice_final_with_vacc/tune_initial_with_CI.csv")
+results <- read.csv("outputs/main/seasonality_waning[-10, 0]_nice_final_with_vacc/tune_initial_with_CI.csv")
 pars <- list(log_A_ini = results[1,2],
              time_shift_1 = results[2,2],
              time_shift_2 = results[3,2],
@@ -14,21 +15,21 @@ pars <- list(log_A_ini = results[1,2],
              log_delta = results[8,2],
              # Other fixed values:
              max_wane = (0),
-             min_wane = (-4),
+             min_wane = (-10),
              vacc = (0.9*0.862*0.02),
              sigma_1 = (1/15.75),
              sigma_2 = (1)
 ) # Serotype 1 is categorised to have the lowest carriage duration
 
 pars_lo_CI <- list(log_A_ini = results[1,3],
-                 time_shift_1 = results[2,3],
-                 time_shift_2 = results[3,3],
-                 beta_0 = results[4,3],
-                 beta_1 = results[5,3],
-                 beta_2 = results[6,3],
-                 scaled_wane = results[7,3],
-                 log_delta = results[8,3]
-                 )
+                   time_shift_1 = results[2,3],
+                   time_shift_2 = results[3,3],
+                   beta_0 = results[4,3],
+                   beta_1 = results[5,3],
+                   beta_2 = results[6,3],
+                   scaled_wane = results[7,3],
+                   log_delta = results[8,3]
+)
 
 pars_hi_CI <- list(log_A_ini = results[1,4],
                    time_shift_1 = results[2,4],
@@ -40,191 +41,248 @@ pars_hi_CI <- list(log_A_ini = results[1,4],
                    log_delta = results[8,4]
 )
 
+n_times <- 4745 # 4745 or similar to the number of date range (of the provided data), or try 500 for trial
+n_particles <- 15L
 
 sir_model <- gen_sir$new(pars = pars,
                          time = 1,
-                         n_particles = 15L,
+                         n_particles = n_particles,
                          n_threads = 4L,
                          seed = 1L)
+
 # sir_model$state() # test array OR matrix state
-sir_lo_CI <- gen_sir$new(pars = pars_lo_CI, time = 1, n_particles = 15L, n_threads = 4L, seed = 1L)
-sir_hi_CI <- gen_sir$new(pars = pars_hi_CI, time = 1, n_particles = 15L, n_threads = 4L, seed = 1L)
+sir_lo_CI <- gen_sir$new(pars = pars_lo_CI, time = 1,
+                         n_particles = n_particles, n_threads = 4L, seed = 1L)
+sir_hi_CI <- gen_sir$new(pars = pars_hi_CI, time = 1,
+                         n_particles = n_particles, n_threads = 4L, seed = 1L)
 
-# update_state is required "every single time" to run & produce matrix output (don't know why)
-sir_model$update_state(pars = pars, time = 0) # make sure time is 0
-sir_lo_CI$update_state(pars = pars_lo_CI, time = 0)
-sir_hi_CI$update_state(pars = pars_hi_CI, time = 0)
 
-# all_date <- incidence$day
-# all_date <- data.frame(col = integer(4745))
-n_times <- 4745 # 4745 or similar to the number of date range (of the provided data), or try 500 for trial
-n_particles <- 15
-x <- array(NA, dim = c(sir_model$info()$len, n_particles, n_times))
-
-# Beta check
-time <- seq(1, n_times, 1)
-time_shift <- 70
-beta <- pars$beta_0 + pars$beta_0*pars$beta_1*sin(2*pi*((time_shift)+time)/365) + pars$beta_0*pars$beta_2*sin(2*pi*((time_shift*365)+time)/365)
-# beta <- pars$beta_0*(1+pars$beta_1*sin(2*pi*(time_shift+time)/365))
-max(beta)
-min(beta)
-
-# R0 estimation (R0 changes due to seasonality)
-R0 <- (beta/(pars$log_delta+pars$sigma_1)) +  ((pars$log_delta)*(beta)) / ((pars$log_delta + 192/(4064*4745))*(pars$sigma_2 + 192/(4064*4745))) # print R0
-max(R0)
-min(R0)
-# plot(time, R0)
-# pars$beta_1/(pars$delta) + (pars$qu*pars$delta)/(pars$delta*pars$sigma) # print R0
-
-# Save arrays for low CI and high CI separately: ###############################
+model <- array(NA, dim = c(sir_model$info()$len, n_particles, n_times))
+# Save arrays for low CI and high CI separately:
 lo_CI <- array(NA, dim = c(sir_lo_CI$info()$len, n_particles, n_times))
 hi_CI <- array(NA, dim = c(sir_hi_CI$info()$len, n_particles, n_times))
 
+# Beta check
+time <- seq(1, n_times, 1)
+# beta_temporary <- beta_0*((1+beta_1*cos(2*pi*((time_shift_1*365)+time)/365)) + (1+beta_2*sin(2*pi*((time_shift_2*365)+time)/365)))
+beta_temporary <- pars$beta_0*((1+pars$beta_1*cos(2*pi*((pars$time_shift_1*365)+time)/365)) + (1+pars$beta_2*sin(2*pi*((pars$time_shift_2*365)+time)/365)))
+beta <- ifelse(time >= 2648, beta_temporary*(1-(0.9*0.862*0.02)), beta_temporary)
+print(c(max(beta), max(beta_temporary))) # beta_temporary simulated with no infant vaccination
+print(c(min(beta), min(beta_temporary)))
+
+# R0 estimation (R0 changes due to seasonality)
+# R0_no_vacc <- beta_temporary/(10^(pars$log_delta)+pars$sigma_1+pars$))
+# R0_vacc <- (beta/(pars$log_delta+pars$sigma_1)) +  ((pars$log_delta)*(beta)) / ((pars$log_delta + 192/(4064*4745))*(pars$sigma_2 + 192/(4064*4745)))
+# max(R0)
+# min(R0)
+
 for (t in seq_len(n_times)) {
-  x[ , , t] <- sir_model$run(t)
+  model[ , , t] <- sir_model$run(t)
   lo_CI[ , , t] <- sir_model$run(t)
   hi_CI[ , , t] <- sir_model$run(t)
 }
-time <- x[1, 1, ] # because in the position of [1, 1, ] is time
-x <- x[-1, , ] # compile all matrix into 1 huge df, delete time (position [-1, , ])
+
+time <- model[1, 1, ] # because in the position of [1, 1, ] is time
+model <- model[-1, , ] # compile all matrix into 1 huge df, delete time (position [-1, , ])
 time <- lo_CI[1, 1, ] # because in the position of [1, 1, ] is time
 lo_CI <- lo_CI[-1, , ] # compile all matrix into 1 huge df, delete time (position [-1, , ])
 time <- hi_CI[1, 1, ] # because in the position of [1, 1, ] is time
 hi_CI <- hi_CI[-1, , ] # compile all matrix into 1 huge df, delete time (position [-1, , ])
-# library(tidyverse)
-# glimpse(x)
+
 
 ## 1. Data Load ################################################################
-## 1.1. Daily incidence
 incidence <- read.csv("inputs/incidence.csv")
+daily_incidence_data <- incidence %>% 
+  dplyr::rename(time = day,
+                value_data = cases) %>% 
+  dplyr::mutate(compartment = "Diseased",
+                replicate = 1)
 
-par(mfrow = c(1,1), mar = c(5.1, 5.1, 0.5, 0.5), mgp = c(3.5, 1, 0), las = 1)
-cols <- c(S = "#8c8cd9", A = "darkred", D = "orange", R = "#999966", n_AD_daily = "#cc0099", n_AD_cumul = "green")
-matplot(time, t(x[5, , ]), type = "l",
-        xlab = "Time", ylab = "Number of individuals",
-        col = cols[["n_AD_daily"]], lty = 1)#, ylim = max(x[2,,]))
+daily_incidence_modelled <- 
+  reshape2::melt(model) %>% 
+  dplyr::rename(index = Var1,     # Var1 = dimension that stored SADR values
+                replicate = Var2, # Var2 = particles
+                time = Var3       # Var3 = time
+  ) %>% 
+  dplyr::filter(index < 5) %>% 
+  dplyr::mutate(compartment = 
+                  dplyr::case_when(index == 1 ~ "Asymptomatic",
+                                   index == 2 ~ "Diseased",
+                                   index == 3 ~ "Susceptible",
+                                   index == 4 ~ "Recovered"
+                  )) %>% 
+  dplyr::rename(value_model = value) %>% 
+  dplyr::select(-index)
 
-matlines(time, t(lo_CI[5, , ]), type = "l", col = "yellow") # --> low CI
-matlines(time, t(hi_CI[5, , ]), type = "l", col = "yellow") # --> high CI
+daily_low_CI <- 
+  reshape2::melt(lo_CI) %>% 
+  dplyr::rename(index = Var1,     # Var1 = dimension that stored SADR values
+                replicate = Var2, # Var2 = particles
+                time = Var3       # Var3 = time
+  ) %>% 
+  dplyr::filter(index < 5) %>% 
+  dplyr::mutate(compartment = 
+                  dplyr::case_when(index == 1 ~ "Asymptomatic",
+                                   index == 2 ~ "Diseased",
+                                   index == 3 ~ "Susceptible",
+                                   index == 4 ~ "Recovered"
+                  )) %>% 
+  dplyr::rename(value_low_CI = value) %>% 
+  dplyr::select(-index)
 
-matlines(incidence$day, incidence$cases, type = "l", col = "steelblue") # --> the real data
+daily_high_CI <- 
+  reshape2::melt(hi_CI) %>% 
+  dplyr::rename(index = Var1,     # Var1 = dimension that stored SADR values
+                replicate = Var2, # Var2 = particles
+                time = Var3       # Var3 = time
+  ) %>% 
+  dplyr::filter(index < 5) %>% 
+  dplyr::mutate(compartment = 
+                  dplyr::case_when(index == 1 ~ "Asymptomatic",
+                                   index == 2 ~ "Diseased",
+                                   index == 3 ~ "Susceptible",
+                                   index == 4 ~ "Recovered"
+                  )) %>% 
+  dplyr::rename(value_high_CI = value) %>% 
+  dplyr::select(-index)
 
-# matlines(time, t(x[2, , ]), col = cols[["A"]], lty = 1)
-# matlines(time, t(x[3, , ]), col = cols[["D"]], lty = 1)
-# matlines(time, t(x[4, , ]), col = cols[["R"]], lty = 1)
-# matlines(time, t(x[5, , ]), col = cols[["n_AD_daily"]], lty = 1)
-# matlines(time, t(x[6, , ]), col = cols[["n_AD_cumul"]], lty = 1)
-legend("left", lwd = 1, col = cols, legend = names(cols), bty = "n")
-max(x[5,,]) # Check max n_AD_daily
-max(x[3,,]) # Check max D
+daily_joined <- daily_incidence_modelled %>% 
+  dplyr::left_join(daily_low_CI, by =  c("time", "compartment", "replicate")) %>% 
+  dplyr::left_join(daily_high_CI, by =  c("time", "compartment", "replicate")) %>% 
+  dplyr::left_join(daily_incidence_data, by =  c("time", "compartment", "replicate"))
+
+write.csv(daily_joined, "inputs/daily_joined.csv", row.names = F)
+
+Sys.sleep(10) # wait 10 secs before generate pictures
+
+## 2. Generate pics! ###########################################################
+daily_joined <- read.csv("inputs/daily_joined.csv")
+
+# Viz daily simulation
+vaccine_UK <- data.frame(
+  day = c(1343, 2648),
+  week = c(1343/7, 2648/7),
+  y_crd = c(log1p(4e7),log1p(4e7)),
+  vaccine = c("PCV7", "PCV13")) # PCV7 start 4 September 2006, PCV13 from April 2010
+# SOURCE: https://www.gov.uk/government/publications/pneumococcal-disease-caused-by-strains-in-prevenar-13-and-not-in-prevenar-7-vaccine/pneumococcal-disease-infections-caused-by-serotypes-in-prevenar-13-and-not-in-prevenar-7
+
+col_compartment <- c(Susceptible = "#8c8cd9",
+                     Asymptomatic = "darkred",
+                     Diseased = "#cc0099",
+                     Recovered = "#999966",
+                     Data_dis = "deepskyblue3"
+)
+
+png("pictures/data_plus_model_daily.png", width = 17, height = 12, unit = "cm", res = 1200)
+ggplot(daily_joined, aes(x = time, y = value_model,
+                         group = interaction(compartment,replicate),
+                         colour = compartment)) +
+  geom_line() +
+  geom_line(data = daily_joined %>% 
+              dplyr::filter(compartment == "Diseased",
+                            !is.na(value_data)) %>% 
+              dplyr::mutate(compartment = 
+                              case_when(compartment == "Diseased" ~ "Data_dis")),
+            aes(y = value_data, colour = compartment),
+            show.legend = T) +
+  geom_vline(data = vaccine_UK, aes(xintercept = day,
+                                    colour = "black"),
+             linetype = "dashed") +
+  # geom_label(data = vaccine_UK, aes(x = day, y = y_crd, label = vaccine),
+  #            colour = "black") +
+  scale_color_manual(values = c(col_compartment),
+                     name = "States",
+                     breaks = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Data_dis"),
+                     labels = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Diseased Data")
+  ) +
+  scale_y_continuous(trans = "log1p") +
+  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in x-axis
+  ggtitle("Serotype 1 Cases (Aggregated by Days)") +
+  xlab("Time (in Day)") +
+  ylab("Number of People") +
+  theme_bw()
+dev.off()
 
 ## 1.2. Weekly incidence
-incidence_weekly <- read.csv("inputs/incidence_weekly.csv")
-data_weekly <- incidence_weekly %>% 
-  dplyr::group_by(weeks) %>% 
-  dplyr::summarise(cases_weekly = sum(cases))
+daily_joined <- daily_joined %>% 
+  dplyr::mutate(weekly = ceiling(time/7))
 
-# Data preparation for model
-min_date <- "2003-01-01"
-max_date <- "2015-12-28"
-all_date <- data.frame(allDate = seq.Date(from = as.Date(min_date),
-                                          to = as.Date(max_date), 
-                                          by = 1))
-daily_incidence_modelled <- as.data.frame(t(x[5, , ]))
-low_CI_df <- as.data.frame(t(lo_CI[5, , ]))
-high_CI_df <- as.data.frame(t(hi_CI[5, , ]))
-model_binds <- dplyr::bind_cols(all_date, daily_incidence_modelled, low_CI_df, high_CI_df)
-model_binds$weeks <- cut(model_binds[,"allDate"], breaks="week")
-model_weekly <- model_binds %>% 
-  dplyr::group_by(weeks) %>% 
-  dplyr::summarise(model_weekly = sum(`V1...2`),
-                   low_CI = sum(`V1...17`),
-                   high_CI = sum(`V1...32`))
+weekly_joined <- daily_joined %>% 
+  dplyr::group_by(replicate, weekly, compartment) %>% 
+  dplyr::summarise(value_model = sum(value_model, na.rm = T),
+                   value_low_CI = sum(value_low_CI, na.rm = T),
+                   value_high_CI = sum(value_high_CI, na.rm = T),
+                   value_data = sum(value_data, na.rm = T),
+                   .groups = "drop") %>% 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(value_data = case_when(replicate > 1 ~ NA,
+                                       .default = as.numeric(value_data)))
 
-data_plus_model <- dplyr::full_join(data_weekly, model_weekly,
-                             by = c("weeks"))
+png("pictures/data_plus_model_weekly.png", width = 17, height = 12, unit = "cm", res = 1200)
+ggplot(weekly_joined, aes(x = weekly, y = value_model,
+                          group = interaction(compartment,replicate),
+                          colour = compartment)) +
+  geom_line() +
+  geom_line(data = weekly_joined %>% 
+              dplyr::filter(compartment == "Diseased",
+                            !is.na(value_data)) %>% 
+              dplyr::mutate(compartment = 
+                              case_when(compartment == "Diseased" ~ "Data_dis")),
+            aes(y = value_data, colour = compartment),
+            show.legend = T) +
+  geom_vline(data = vaccine_UK, aes(xintercept = week,
+                                    colour = "black"),
+             linetype = "dashed") +
+  # geom_label(data = vaccine_UK, aes(x = week, y = y_crd, label = vaccine),
+  #            colour = "black") +
+  scale_color_manual(values = c(col_compartment),
+                     name = "States",
+                     breaks = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Data_dis"),
+                     labels = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Diseased Data")
+  ) +
+  scale_y_continuous(trans = "log1p") +
+  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in x-axis
+  ggtitle("Serotype 1 Cases (Aggregated by Weeks)") +
+  xlab("Time (in Week)") +
+  ylab("Number of People") +
+  theme_bw()
+dev.off()
 
-# Plot!
-# png("pictures/data_plus_model.png", width = 17, height = 12, unit = "cm", res = 1200)
+# Weekly incidence focused only on diseased people
+weekly_D_only <- weekly_joined %>% 
+  dplyr::filter(compartment == "Diseased")
+
+png("pictures/data_plus_model_weekly_diseased_only.png", width = 17, height = 12, unit = "cm", res = 1200)
 col_imD_weekly <- c(cases_weekly = "deepskyblue3",
-                    model_weekly = "maroon",
+                    model_weekly = "#cc0099",
                     CIs = "yellow")
-ggplot(data_plus_model, aes(as.Date(weeks))) +
-  geom_line(aes(y = cases_weekly, colour = "cases_weekly")) +
+ggplot(weekly_D_only, aes(x = weekly,
+                          group = interaction(compartment,replicate),
+                          colour = compartment)) +
+ 
+  geom_line(aes(y = value_low_CI, colour = "CIs")) + # --> low CI
+  geom_line(aes(y = value_high_CI, colour = "CIs")) + # --> high CI
   
-  geom_line(aes(y = low_CI, colour = "CIs")) + # --> low CI
-  geom_line(aes(y = high_CI, colour = "CIs")) + # --> high CI
+  geom_line(aes(y = value_model, colour = "model_weekly")) + # --> model
+  geom_line(aes(y = value_data, colour = "cases_weekly")) + # --> data
   
-  geom_line(aes(y = model_weekly, colour = "model_weekly")) + # --> model
-  
-  scale_x_date() +
+  geom_vline(data = vaccine_UK, aes(xintercept = week,
+                                    colour = "black"),
+             linetype = "dashed") +
+  geom_label(aes(x = 1343/7, y = 45, label = "PCV7"),
+             fill = "white", color = "black") + # 2006 = PCV7
+  geom_label(aes(x = 2648/7, y = 45, label = "PCV13"),
+             fill = "white", color = "black") + # 2011 = PCV13
+  scale_x_continuous() +
+  # scale_y_continuous(trans = "log1p") +
   scale_color_manual(values = col_imD_weekly,
                      name = "Cases",
                      breaks = c("cases_weekly", "model_weekly"),
                      labels = c("Data", "Model")
   ) +
   ggtitle("The Comparison of Model Output and Counts of Serotype 1 in England") +
-  xlab("Year") +
+  xlab("Week") +
   ylab("Serotype 1 Cases (Aggregated by Week)") +
   theme_bw()
-# dev.off()
+dev.off()
 
-
-# Additional plot S, A, R ######################################################
-# Daily cases (separated)
-par(mfrow = c(2,2), mar = c(5.1, 5.1, 0.5, 0.5), mgp = c(3.5, 1, 0), las = 1)
-cols <- c(S = "#8c8cd9", A = "darkred", D = "orange", R = "#999966", n_AD_daily = "#cc0099", n_AD_cumul = "green")
-matplot(time, t(x[1, , ]), type = "l",
-        xlab = "Time", ylab = "Susceptible",
-        col = cols[["S"]], lty = 1)
-
-matplot(time, t(x[2, , ]), type = "l",
-        xlab = "Time", ylab = "Asymptomatic",
-        col = cols[["A"]], lty = 1)
-
-matplot(time, t(x[5, , ]), type = "l",
-        xlab = "Time", ylab = "Diseased",
-        col = cols[["n_AD_daily"]], lty = 1)
-
-matplot(time, t(x[4, , ]), type = "l",
-        xlab = "Time", ylab = "Recovered",
-        col = cols[["R"]], lty = 1)
-par(mfrow = c(1,1))
-
-# Daily cases (combined, not recommended because even Asymptomatic cases can't be seen)
-par(mfrow = c(1,1), mar = c(5.1, 5.1, 0.5, 0.5), mgp = c(3.5, 1, 0), las = 1)
-cols <- c(S = "#8c8cd9", A = "darkred", D = "orange", R = "#999966", n_AD_daily = "#cc0099", n_AD_cumul = "green")
-matplot(time, t(x[1, , ]), type = "l",
-        xlab = "Time", ylab = "Number of individuals",
-        col = cols[["S"]], lty = 1)
-matlines(time, t(x[2, , ]), type = "l", col = cols[["A"]])
-matlines(time, t(x[3, , ]), type = "l", col = cols[["D"]])
-matlines(time, t(x[4, , ]), type = "l", col = cols[["R"]])
-
-
-
-# Toy data creation ############################################################
-# glimpse(x)
-particle_1Data <- as.data.frame(x[5,,])
-transposed_particle_1Data <- t(particle_1Data)
-
-incidence_1particle <- tibble(day = 1:4745) %>% 
-  bind_cols(transposed_particle_1Data)
-# write.csv(incidence_1particle, file="outputs/SIS_daily_incidence_15particles.csv", row.names =F)
-# write.csv(incidence_1particle, file="outputs/SIR_daily_incidence_15particles.csv", row.names =F)
-
-
-
-
-
-# all_Data <- as.data.frame(x[5, 1:15, 1:4745])
-# nrows <- length(all_Data[,,1]) # nrows = 4745
-# ncols <- length(all_Data[,1,]) # ncols = 15
-# 
-# modified <- as.data.frame(matrix(all_Data, nrow = 4745, ncol = 15, byrow = T))
-# glimpse(modified)
-# 
-# incidence_particles <- tibble(day = 1:4745) %>% 
-#   bind_cols(modified)
-# 
-# write.csv(incidence_particles, file="outputs/SIS_daily_incidence_15particles.csv", row.names =F)

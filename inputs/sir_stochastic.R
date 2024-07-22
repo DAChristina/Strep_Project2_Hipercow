@@ -6,7 +6,7 @@ dt <- 1/freq
 initial(time) <- 0
 
 # 1. PARAMETERS ################################################################
-S_ini <- user(6.7e7) # FIXED England's pop size is roughly 67,000,000
+N <- user(6.7e7) # FIXED England's pop size is roughly 67,000,000
 log_A_ini <- user(0) # S_ini*10^(log10(-5.69897)) = 120 people; change A_ini into log10(A_ini)
 D_ini <- user(0) 
 time_shift_1 <- user(0)
@@ -15,8 +15,8 @@ beta_0 <- user(0)
 beta_1 <- user(0)
 beta_2 <- user(0)
 
-max_wane <- user(0) # FIXED, scaled waning immunity
-min_wane <- user(-4) # FIXED, scaled waning immunity
+max_wane <- user(-5) # FIXED, scaled waning immunity
+min_wane <- user(-10) # FIXED, scaled waning immunity
 scaled_wane <- user(0)
 
 # Vaccination:
@@ -24,7 +24,7 @@ scaled_wane <- user(0)
 # https://fingertips.phe.org.uk/search/PPV#page/4/gid/1/pat/159/par/K02000001/ati/15/are/E92000001/iid/30313/age/27/sex/4/cat/-1/ctp/-1/yrr/1/cid/4/tbm/1
 # vacc_elderly <- 0.7*0.57 # FIXED PPV23 vaccination coverage * efficacy
 # ratio of vaccinated elderly for >64 y.o. people, averaged 69.7243% ~ 70%
-vacc <- user(0.9*0.862*0.02) # FIXED PCV13 vaccination coverage * efficacy * proportion of kids below 2 y.o.
+vacc <- 0.9*0.862*0.02 # FIXED PCV13 vaccination coverage * efficacy * proportion of kids below 2 y.o.
 # ratio of vaccinated kids, averaged 90%
 # vacc <- (vacc_elderly + vacc_kids)/2 # FIXED, average
 
@@ -42,27 +42,28 @@ mu_1 <- user(192/(4064*4745)) # FIXED disease-associated mortality; ratio 192/40
 pi <- user(3.141593) # FIXED
 
 # 2. INITIAL VALUES ############################################################
-initial(S) <- S_ini
-initial(A) <- 10^(log_A_ini)*S_ini
+A_ini <- 10^(log_A_ini)*N
+initial(A) <- A_ini
 initial(D) <- D_ini
+initial(S) <- N - A_ini - D_ini
 initial(R) <- 0
 initial(n_AD_daily) <- 0
 initial(n_AD_cumul) <- 0
 
 # 3. UPDATES ###################################################################
-N <- S + A + D + R
 beta_temporary <- beta_0*((1+beta_1*cos(2*pi*((time_shift_1*365)+time)/365)) + (1+beta_2*sin(2*pi*((time_shift_2*365)+time)/365)))
 # Infant vaccination coverage occurs when PCV13 introduced in April 2010 (day 2648 from 01.01.2003)
 # https://fingertips.phe.org.uk/search/vaccination#page/4/gid/1/pat/159/par/K02000001/ati/15/are/E92000001/iid/30306/age/30/sex/4/cat/-1/ctp/-1/yrr/1/cid/4/tbm/1/page-options/tre-do-0
 # https://cran.r-project.org/web/packages/finalsize/vignettes/varying_contacts.html
 beta <- if (time >= 2648) beta_temporary*(1-vacc) else beta_temporary
 
-lambda <- beta*(A+D)/N # infectious state from Asymtomatic & Diseased individuals
+# lambda <- beta*(A+D)/N # infectious state from Asymtomatic & Diseased individuals
+lambda <- if ((A+D) > 0) beta*(A+D)/N else 0
 delta <- (10^(log_delta))*UK_calibration
 
 log_wane <- scaled_wane*(max_wane-min_wane)+min_wane # scaled_wane*(max_wane−min_wane)+min_wane; rescaled using (wane-wane_min)/(wane_max-wane_min)
 wane <- 10^(log_wane)
-#wane <- 0
+# wane <- 0
 
 # Individual probabilities of transition
 p_SA <- 1- exp(-(lambda+mu_0) * dt)

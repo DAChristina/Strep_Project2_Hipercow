@@ -2,67 +2,402 @@ library(tidyverse)
 library(ggtree)
 
 # load data
+data <- read.csv("raw_data/gubbins/n703/phandango_microreact_check/microreact_tre_names.csv")
+
 gene_data_protl <- read.csv("raw_data/panaroo/gene_data_protl.csv", head = F)
 colnames(gene_data_protl) <- c("sequence", "protein", "prot_length")
 
 name <- "01435762_ukhsa_assembly_trimmed_500bp_contigs"
 
-# Focused on comD ##############################################################
-comD_samples <- read.csv("raw_data/panaroo/comD_samples.csv", head = F)
+coiA_samples <- read.csv("raw_data/panaroo/protein_samples/coiA_samples.csv", head = F)
+comA_samples <- read.csv("raw_data/panaroo/protein_samples/comA_samples.csv", head = F)
+comC_samples <- read.csv("raw_data/panaroo/protein_samples/comC_samples.csv", head = F)
+comD_samples <- read.csv("raw_data/panaroo/protein_samples/comD_samples.csv", head = F)
+comE_samples <- read.csv("raw_data/panaroo/protein_samples/comE_samples.csv", head = F)
+
+
+GNAT_samples <- read.csv("raw_data/panaroo/protein_samples/GNAT_acetyltransferase_samples.csv", head = F)
+blpA2_samples <- read.csv("raw_data/panaroo/protein_samples/blpA2_samples.csv", head = F)
+bsaA_samples <- read.csv("raw_data/panaroo/protein_samples/bsaA_samples.csv", head = F)
+cinA_samples <- read.csv("raw_data/panaroo/protein_samples/cinA_samples.csv", head = F)
+folP_samples <- read.csv("raw_data/panaroo/protein_samples/folP_samples.csv", head = F)
+hysA_samples <- read.csv("raw_data/panaroo/protein_samples/hysA_samples.csv", head = F)
+liaF_samples <- read.csv("raw_data/panaroo/protein_samples/liaF_samples.csv", head = F)
+
+# Focused on competence proteins ###############################################
+coiA_samples <- as.data.frame(t(coiA_samples)) %>% 
+  magrittr::set_colnames(c("all_protein_coiA")) %>% 
+  dplyr::filter(!is.na(all_protein_coiA),
+                all_protein_coiA != "group_843" & all_protein_coiA != "hypothetical protein") %>% 
+  dplyr::mutate(seq_name_coiA = substr(all_protein_coiA, 1, nchar(name))) %>% 
+  tidyr::separate_rows(c(all_protein_coiA), sep = ";") %>% 
+  dplyr::left_join(gene_data_protl, by = c("all_protein_coiA" = "protein")) %>% 
+  dplyr::select(-sequence) %>% 
+  dplyr::group_by(seq_name_coiA) %>%
+  dplyr::slice(which.max(prot_length)) %>% 
+  dplyr::rename(protl_coiA = prot_length) %>% 
+  dplyr::ungroup()
+
+comA_samples <- as.data.frame(t(comA_samples)) %>% 
+  magrittr::set_colnames(c("all_protein_comA")) %>% 
+  dplyr::filter(!is.na(all_protein_comA),
+                all_protein_comA != "msbA~~~lagD_3~~~lagD_1" & all_protein_comA != "msbA;lagD_3;lagD_1" & 
+                  all_protein_comA != "Lipid A export ATP-binding/permease protein MsbA;Lactococcin-G-processing and transport ATP-binding protein LagD") %>% 
+  dplyr::mutate(seq_name_comA = substr(all_protein_comA, 1, nchar(name))) %>% 
+  tidyr::separate_rows(c(all_protein_comA), sep = ";") %>%
+  dplyr::left_join(gene_data_protl, by = c("all_protein_comA" = "protein")) %>% 
+  dplyr::select(-sequence) %>% 
+  dplyr::group_by(seq_name_comA) %>%
+  dplyr::slice(which.max(prot_length)) %>% 
+  dplyr::rename(protl_comA = prot_length) %>% 
+  dplyr::ungroup()
+
+# For comC it's better to separate the df into comC and comC21
+comC_samples_1 <- as.data.frame(t(comC_samples)) %>% 
+  magrittr::set_colnames(c("all_protein_comC", "all_protein_comC21")) %>% 
+  dplyr::select(all_protein_comC) %>% 
+  dplyr::filter(!is.na(all_protein_comC),
+                all_protein_comC != "comC" & all_protein_comC != "Type 4 prepilin-like proteins leader peptide-processing enzyme") %>% 
+  dplyr::mutate(seq_name_comC = substr(all_protein_comC, 1, nchar(name))) %>% 
+  tidyr::separate_rows(c(all_protein_comC), sep = ";") %>% 
+  dplyr::left_join(gene_data_protl, by = c("all_protein_comC" = "protein")) %>% 
+  dplyr::select(-sequence) %>% 
+  dplyr::group_by(seq_name_comC) %>%
+  dplyr::slice(which.max(prot_length)) %>% 
+  dplyr::rename(protl_comC = prot_length) %>% 
+  dplyr::ungroup()
+
+comC21_samples <- as.data.frame(t(comC_samples)) %>% 
+  magrittr::set_colnames(c("all_protein_comC", "all_protein_comC21")) %>% 
+  dplyr::select(all_protein_comC21) %>% 
+  dplyr::filter(!is.na(all_protein_comC21),
+                all_protein_comC21 != "comC" & all_protein_comC21 != "Type 4 prepilin-like proteins leader peptide-processing enzyme") %>% 
+  dplyr::mutate(seq_name_comC21 = substr(all_protein_comC21, 1, nchar(name))) %>% 
+  tidyr::separate_rows(c(all_protein_comC21), sep = ";") %>% 
+  dplyr::left_join(gene_data_protl, by = c("all_protein_comC21" = "protein")) %>% 
+  dplyr::select(-sequence) %>% 
+  dplyr::group_by(seq_name_comC21) %>%
+  dplyr::slice(which.max(prot_length)) %>% 
+  dplyr::rename(protl_comC21 = prot_length) %>% 
+  dplyr::ungroup()
+
 comD_samples <- as.data.frame(t(comD_samples)) %>% 
-  magrittr::set_colnames(c("all_protein")) %>% 
-  dplyr::filter(!is.na(all_protein),
-                all_protein != "group_89" & all_protein != "hypothetical protein") %>% 
-  dplyr::mutate(seq_name = substr(all_protein, 1, nchar(name))) %>% 
-  tidyr::separate_rows(c(all_protein), sep = ";")
-
-# filter out all protein list in gene_data_protl
-comD_combined <- dplyr::left_join(comD_samples, gene_data_protl, by = c("all_protein" = "protein")) %>% 
-  dplyr::group_by(seq_name) %>%
+  magrittr::set_colnames(c("all_protein_comD")) %>% 
+  dplyr::filter(!is.na(all_protein_comD),
+                all_protein_comD != "group_89" & all_protein_comD != "hypothetical protein") %>% 
+  dplyr::mutate(seq_name_comD = substr(all_protein_comD, 1, nchar(name))) %>% 
+  tidyr::separate_rows(c(all_protein_comD), sep = ";") %>% 
+  dplyr::left_join(gene_data_protl, by = c("all_protein_comD" = "protein")) %>% 
+  dplyr::select(-sequence) %>% 
+  dplyr::group_by(seq_name_comD) %>%
   dplyr::slice(which.max(prot_length)) %>% 
-  dplyr::ungroup() %>% 
-  dplyr::select(all_protein, seq_name, prot_length)
+  dplyr::rename(protl_comD = prot_length) %>% 
+  dplyr::ungroup()
 
-# Focused on folP ##############################################################
-folP_samples <- read.csv("raw_data/panaroo/folP_samples.csv", head = F)
+comE_samples <- as.data.frame(t(comE_samples)) %>% 
+  magrittr::set_colnames(c("all_protein_comE")) %>% 
+  dplyr::filter(!is.na(all_protein_comE),
+                all_protein_comE != "ComEC" & all_protein_comE != "comEC" & all_protein_comE != "ComE operon protein 3") %>% 
+  dplyr::mutate(seq_name_comE = substr(all_protein_comE, 1, nchar(name))) %>% 
+  tidyr::separate_rows(c(all_protein_comE), sep = ";") %>% 
+  dplyr::left_join(gene_data_protl, by = c("all_protein_comE" = "protein")) %>% 
+  dplyr::select(-sequence) %>% 
+  dplyr::group_by(seq_name_comE) %>%
+  dplyr::slice(which.max(prot_length)) %>% 
+  dplyr::rename(protl_comE = prot_length) %>% 
+  dplyr::ungroup()
+
+# Focused on other "additional" proteins! ######################################
+# GNAT family N-acetyltransferase (Acetylation linked to AMR)
+GNAT_samples <- as.data.frame(t(GNAT_samples)) %>% 
+  magrittr::set_colnames(c("all_protein_GNAT")) %>% 
+  dplyr::filter(!is.na(all_protein_GNAT),
+                all_protein_GNAT != "group_363" & all_protein_GNAT != "hypothetical protein") %>% 
+  dplyr::mutate(seq_name_GNAT = substr(all_protein_GNAT, 1, nchar(name))) %>% 
+  tidyr::separate_rows(c(all_protein_GNAT), sep = ";") %>% 
+  dplyr::left_join(gene_data_protl, by = c("all_protein_GNAT" = "protein")) %>% 
+  dplyr::select(-sequence) %>% 
+  dplyr::group_by(seq_name_GNAT) %>%
+  dplyr::slice(which.max(prot_length)) %>% 
+  dplyr::rename(protl_GNAT = prot_length) %>% 
+  dplyr::ungroup()
+
+# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6016807/ (previously misidentified as comA)
+blpA2_samples <- as.data.frame(t(blpA2_samples)) %>% 
+  magrittr::set_colnames(c("all_protein_blpA2")) %>% 
+  dplyr::filter(!is.na(all_protein_blpA2),
+                all_protein_blpA2 != "lagD_1" & all_protein_blpA2 != "lagD_2" & all_protein_blpA2 != "lagD_1~~~lagD_2" & 
+                  all_protein_blpA2 != "hypothetical protein" & all_protein_blpA2 != "Lactococcin-G-processing and transport ATP-binding protein LagD") %>% 
+  dplyr::mutate(seq_name_blpA2 = substr(all_protein_blpA2, 1, nchar(name))) %>% 
+  tidyr::separate_rows(c(all_protein_blpA2), sep = ";") %>%
+  dplyr::left_join(gene_data_protl, by = c("all_protein_blpA2" = "protein")) %>% 
+  dplyr::select(-sequence) %>% 
+  dplyr::group_by(seq_name_blpA2) %>%
+  dplyr::slice(which.max(prot_length)) %>% 
+  dplyr::rename(protl_blpA2 = prot_length) %>% 
+  dplyr::ungroup()
+
+# glutathione peroxidase (Related to oxidative stress resistance systems (and metal ion toxicity))
+bsaA_samples <- as.data.frame(t(bsaA_samples)) %>% 
+  magrittr::set_colnames(c("all_protein_bsaA")) %>% 
+  dplyr::filter(!is.na(all_protein_bsaA),
+                all_protein_bsaA != "bsaA" & all_protein_bsaA != "Glutathione peroxidase BsaA") %>% 
+  dplyr::mutate(seq_name_bsaA = substr(all_protein_bsaA, 1, nchar(name))) %>% 
+  tidyr::separate_rows(c(all_protein_bsaA), sep = ";") %>% 
+  dplyr::left_join(gene_data_protl, by = c("all_protein_bsaA" = "protein")) %>% 
+  dplyr::select(-sequence) %>% 
+  dplyr::group_by(seq_name_bsaA) %>%
+  dplyr::slice(which.max(prot_length)) %>% 
+  dplyr::rename(protl_bsaA = prot_length) %>% 
+  dplyr::ungroup()
+
+# competence/damage-inducible protein A (Natural competence)
+cinA_samples <- as.data.frame(t(cinA_samples)) %>% 
+  magrittr::set_colnames(c("all_protein_cinA")) %>% 
+  dplyr::filter(!is.na(all_protein_cinA),
+                all_protein_cinA != "cinA" & all_protein_cinA != "Putative competence-damage inducible protein") %>% 
+  dplyr::mutate(seq_name_cinA = substr(all_protein_cinA, 1, nchar(name))) %>% 
+  tidyr::separate_rows(c(all_protein_cinA), sep = ";") %>% 
+  dplyr::left_join(gene_data_protl, by = c("all_protein_cinA" = "protein")) %>% 
+  dplyr::select(-sequence) %>% 
+  dplyr::group_by(seq_name_cinA) %>%
+  dplyr::slice(which.max(prot_length)) %>% 
+  dplyr::rename(protl_cinA = prot_length) %>% 
+  dplyr::ungroup()
+
+# dihydropteroate synthase (targeted by Sulfonamides, linked to AMR)
 folP_samples <- as.data.frame(t(folP_samples)) %>% 
-  magrittr::set_colnames(c("all_protein")) %>% 
-  dplyr::filter(!is.na(all_protein),
-                all_protein != "sulA" & all_protein != "Dihydropteroate synthase") %>% 
-  dplyr::mutate(seq_name = substr(all_protein, 1, nchar(name))) %>% 
-  tidyr::separate_rows(c(all_protein), sep = ";")
-
-# filter out all protein list in gene_data_protl
-folP_combined <- dplyr::left_join(folP_samples, gene_data_protl, by = c("all_protein" = "protein")) %>% 
-  dplyr::group_by(seq_name) %>%
+  magrittr::set_colnames(c("all_protein_folP")) %>% 
+  dplyr::filter(!is.na(all_protein_folP),
+                all_protein_folP != "sulA" & all_protein_folP != "Dihydropteroate synthase") %>% 
+  dplyr::mutate(seq_name_folP = substr(all_protein_folP, 1, nchar(name))) %>% 
+  tidyr::separate_rows(c(all_protein_folP), sep = ";") %>% 
+  dplyr::left_join(gene_data_protl, by = c("all_protein_folP" = "protein")) %>% 
+  dplyr::select(-sequence) %>% 
+  dplyr::group_by(seq_name_folP) %>%
   dplyr::slice(which.max(prot_length)) %>% 
-  dplyr::ungroup() %>% 
-  dplyr::select(all_protein, seq_name, prot_length)
+  dplyr::rename(protl_folP = prot_length) %>% 
+  dplyr::ungroup()
+
+# cell wall-active antibiotics response protein LiaF (Relate to sense cell envelope stress; studied in NESp)
+liaF_samples <- as.data.frame(t(liaF_samples)) %>% 
+  magrittr::set_colnames(c("all_protein_liaF")) %>% 
+  dplyr::filter(!is.na(all_protein_liaF),
+                all_protein_liaF != "sulA" & all_protein_liaF != "Dihydropteroate synthase") %>% 
+  dplyr::mutate(seq_name_liaF = substr(all_protein_liaF, 1, nchar(name))) %>% 
+  tidyr::separate_rows(c(all_protein_liaF), sep = ";") %>% 
+  dplyr::left_join(gene_data_protl, by = c("all_protein_liaF" = "protein")) %>% 
+  dplyr::select(-sequence) %>% 
+  dplyr::group_by(seq_name_liaF) %>%
+  dplyr::slice(which.max(prot_length)) %>% 
+  dplyr::rename(protl_liaF = prot_length) %>% 
+  dplyr::ungroup()
+
+# LPXTG-anchored hyaluronate lyase (Surface enzyme linked to spreading throughout host tissue)
+hysA_samples <- as.data.frame(t(hysA_samples)) %>% 
+  magrittr::set_colnames(c("all_protein_hysA")) %>% 
+  dplyr::filter(!is.na(all_protein_hysA),
+                all_protein_hysA != "group_924" & all_protein_hysA != "Hyaluronate lyase") %>% 
+  dplyr::mutate(seq_name_hysA = substr(all_protein_hysA, 1, nchar(name))) %>% 
+  tidyr::separate_rows(c(all_protein_hysA), sep = ";") %>% 
+  dplyr::left_join(gene_data_protl, by = c("all_protein_hysA" = "protein")) %>% 
+  dplyr::select(-sequence) %>% 
+  dplyr::group_by(seq_name_hysA) %>%
+  dplyr::slice(which.max(prot_length)) %>% 
+  dplyr::rename(protl_hysA = prot_length) %>% 
+  dplyr::ungroup()
+
+
+# Create combined dataframe! ###################################################
+# ggtree failed to load a tree from one huge dataframe.
+combined_data <- data %>% 
+  dplyr::left_join(coiA_samples, by = c("tre.tip.label" = "seq_name_coiA")) %>% 
+  dplyr::left_join(comA_samples, by = c("tre.tip.label" = "seq_name_comA")) %>% 
+  dplyr::left_join(comC_samples_1, by = c("tre.tip.label" = "seq_name_comC")) %>% 
+  dplyr::left_join(comC21_samples, by = c("tre.tip.label" = "seq_name_comC21")) %>% 
+  dplyr::left_join(comD_samples, by = c("tre.tip.label" = "seq_name_comD")) %>% 
+  dplyr::left_join(comE_samples, by = c("tre.tip.label" = "seq_name_comE")) %>% 
+  # Other proteins
+  dplyr::left_join(GNAT_samples, by = c("tre.tip.label" = "seq_name_GNAT")) %>% 
+  dplyr::left_join(blpA2_samples, by = c("tre.tip.label" = "seq_name_blpA2")) %>% 
+  dplyr::left_join(bsaA_samples, by = c("tre.tip.label" = "seq_name_bsaA")) %>% 
+  dplyr::left_join(cinA_samples, by = c("tre.tip.label" = "seq_name_cinA")) %>% 
+  dplyr::left_join(folP_samples, by = c("tre.tip.label" = "seq_name_folP")) %>% 
+  dplyr::left_join(hysA_samples, by = c("tre.tip.label" = "seq_name_hysA")) %>% 
+  dplyr::left_join(liaF_samples, by = c("tre.tip.label" = "seq_name_liaF")) %>% 
+  glimpse()
+
+representative_clades <- combined_data %>% 
+  dplyr::filter(tre.tip.label %in% c("01474021_ukhsa_assembly_trimmed_500bp_contigs", # clade1
+                                     "01474041_ukhsa_assembly_trimmed_500bp_contigs", # clade2
+                                     "01474105_ukhsa_assembly_trimmed_500bp_contigs") # clade3
+                )
+
 
 ################################################################################
-tre_gubbins <- BactDating::loadGubbins("raw_data/gubbins/n703/n703_") # gubbins output
+# tre_gubbins <- BactDating::loadGubbins("raw_data/gubbins/n703/n703_") # gubbins output
 tre_BD <- read_rds("outputs/genomics/choosen_n703/method_strictgamma_1e6/mcmc_bacdating.rds") # BactDating output
 
-data <- read.csv("raw_data/gubbins/n703/phandango_microreact_check/microreact_tre_names.csv")
+tre_names <- as.data.frame(tre_BD$tree$tip.label)
+tre_names <- dplyr::left_join(tre_names, combined_data, by = c("tre_BD$tree$tip.label" = "tre.tip.label")) %>% 
+  # dplyr::filter(!is.na(clade)) %>% 
+  dplyr::select(-ID) %>% 
+  dplyr::rename(ID = 'tre_BD$tree$tip.label')
 
 
-tre_names <- as.data.frame(tre$tip.label) #%>% 
-# rename(ID = 'tre$tip.label')
-tre_names$ID <- substr(tre_BD$tree$tip.label, 1, 8)
-tre_names <- dplyr::left_join(tre_names, data, by = c("tre$tip.label" = "tre.tip.label")) %>% 
-  dplyr::filter(!is.na("clade"))
+# Visual inspection for every prot_l in tre_names
+tre_names_long <- tre_names %>%
+  tidyr::pivot_longer(cols = starts_with("protl_"), names_to = "proteins", values_to = "AA_length")
 
-# Focused on comD tree #########################################################
-tre_comD <- dplyr::left_join(tre_names, comD_combined, by = c("tre$tip.label" = "seq_name"))
-tre_comD_length <- tre_comD %>% 
-  dplyr::select(`tre$tip.label`, prot_length)
-tre_comD_clade <- tre_comD %>% 
-  dplyr::select(`tre$tip.label`, clade)
+# Create histogram with facet_wrap
+# png("pictures/genomics/protein_length_histograms.png", width = 24, height = 20, unit = "cm", res = 1200)
+ggplot(tre_names_long, aes(x = AA_length)) +
+  geom_histogram(binwidth = 5, fill = "deepskyblue3", alpha = 0.7) +
+  facet_wrap(~ proteins, scales = "free_x") +
+  scale_y_continuous(trans = "log1p") +
+  labs(title = "Histograms Amino Acid Length",
+       x = "Sequence",
+       y = "Count") +
+    theme_bw()
+# dev.off()
 
+
+# Focused on competence genes tree #############################################
 # Nice guideline: https://yulab-smu.top/treedata-book/chapter7.html
-trial_ggtree <- ggtree(tre_BD$tree,
-                       mrsd = 2014-07-11)
-trial_ggtree
+ggtree_clades <- ggtree(tre_BD$tree,
+                        mrsd = 2014-07-11) %<+%
+  tre_names +
+  geom_tippoint(aes(color=clade))
+ggtree_clades
+
+ggtree_ageGroup2 <- ggtree(tre_BD$tree,
+                           mrsd = 2014-07-11) %<+%
+  tre_names +
+  geom_tippoint(aes(color=ageGroup2))
+ggtree_ageGroup2
+
+ggtree_ageGroup5 <- ggtree(tre_BD$tree,
+                        mrsd = 2014-07-11) %<+%
+  tre_names +
+  geom_tippoint(aes(color=ageGroup))
+ggtree_ageGroup5
+
+ggtree_ageGroup7 <- ggtree(tre_BD$tree,
+                           mrsd = 2014-07-11) %<+%
+  tre_names +
+  geom_tippoint(aes(color=ageGroup7))
+ggtree_ageGroup7
+
+ggtree_vacc <- ggtree(tre_BD$tree,
+                           mrsd = 2014-07-11) %<+%
+  tre_names +
+  geom_tippoint(aes(color=vacc))
+ggtree_vacc
+
+ggtree_others <- ggtree(tre_BD$tree,
+                      mrsd = 2014-07-11) %<+%
+  tre_names +
+  geom_tippoint(aes(color=resistance_smx)) +
+  geom_nodepoint(color="#b5e521", alpha=1/4, size=5)
+ggtree_others
+
+
+################################################################################
+# ggtree failed to load a tree from one huge df, better to separate info into some df
+# between tree, general info, and other data (e.g. those loaded in geom_facet())
+
+# Focused only from gathered proteins with different length based on histogram inspection
+gathered_protl <- tre_names %>% 
+  dplyr::select(ID, protl_coiA, protl_comA, protl_comD, protl_blpA2, protl_folP, protl_hysA, resistance_smx) %>% 
+  dplyr::rename(pl_coiA = protl_coiA,
+                pl_comA = protl_comA,
+                pl_comD = protl_comD,
+                pl_blpA2 = protl_blpA2,
+                pl_folP = protl_folP,
+                pl_hysA = protl_hysA,
+                res_smx = resistance_smx)
+
+png("pictures/genomics/protein_length_competence.png", width = 24, height = 12, unit = "cm", res = 1200)
+gfacet_coms_l <- ggtree_vacc +
+  geom_facet(panel = "Length of coiA", data = gathered_protl, geom = geom_col, 
+             aes(x = protl_coiA), orientation = 'y', width = .6) +
+  # Not any meaningful difference in comA
+  # geom_facet(panel = "Length of comA", data = gathered_protl, geom = geom_col, 
+  #            aes(x = protl_comA), orientation = 'y', width = .6) +
+  geom_facet(panel = "Length of comD", data = gathered_protl, geom = geom_col, 
+             aes(x = protl_comD), orientation = 'y', width = .6) +
+  theme_tree2(legend.position=c(.05, .85))
+gfacet_coms_l
+dev.off()
+
+png("pictures/genomics/protein_length_others.png", width = 24, height = 12, unit = "cm", res = 1200)
+gfacet_others_l <- ggtree_vacc +
+  geom_facet(panel = "Length of blpA2", data = gathered_protl, geom = geom_col, 
+             aes(x = protl_blpA2,
+             colour = res_smx, fill = res_smx
+  ), orientation = 'y', width = .6) +
+  geom_facet(panel = "Length of folP", data = gathered_protl, geom = geom_col, 
+             aes(x = protl_folP,
+                 colour = res_smx, fill = res_smx
+             ), orientation = 'y', width = .6) +
+  geom_facet(panel = "Length of hysA", data = gathered_protl, geom = geom_col, 
+             aes(x = protl_hysA,
+                 colour = res_smx, fill = res_smx
+             ), orientation = 'y', width = .6) +
+  theme_tree2(legend.position=c(.05, .85))
+gfacet_others_l
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Trial viz loop!
+protl_cols <- grep("^protl_", colnames(combined_data), value = T)
+for (c in protl_cols) {
+  # Generate plots!
+  png(file = paste("pictures/genomics/", c, ".png", sep = ""), width = 24, height = 12, unit = "cm", res = 1200)
+  tree_proteins <-
+    ggtree_vacc +
+    geom_facet(panel = "Product", data = combined_data, geom = geom_col, 
+               aes(x = c, color = c, 
+                   fill = c), orientation = 'y', width = .6) +
+    theme_tree2(legend.position=c(.05, .85)) #+
+    #ggtitle(paste("Plot ", c))
+  tree_proteins
+  dev.off()
+}
+
+filtered_coiA <- combined_data %>% 
+  dplyr::filter(!is.na(protl_coiA)) %>% 
+  dplyr::select(tre.tip.label, protl_coiA)
+
+
+
+ggtree_vacc +
+  geom_facet(panel = "Trait", data = combined_data, geom = geom_col, 
+             aes(x = serotype, colour = vacc, 
+                 fill = vacc), orientation = 'y', width = .6) +
+  theme_tree2(legend.position=c(.05, .85))
+
+
+
+
 
 # Trial gheatmap
 gheatmap(trial_ggtree, tre_comD_clade,

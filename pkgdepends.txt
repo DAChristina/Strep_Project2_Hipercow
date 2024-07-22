@@ -3,6 +3,7 @@ repo::https://cloud.r-project.org
 
 tidyverse
 readxl
+reshape2
 
 drat
 mcstate
