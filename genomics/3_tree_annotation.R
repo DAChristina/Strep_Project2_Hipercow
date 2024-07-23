@@ -1,5 +1,6 @@
 library(tidyverse)
 library(ggtree)
+library(epitools)
 
 # load data
 data <- read.csv("raw_data/gubbins/n703/phandango_microreact_check/microreact_tre_names.csv")
@@ -227,13 +228,46 @@ combined_data <- data %>%
   dplyr::left_join(liaF_samples, by = c("tre.tip.label" = "seq_name_liaF")) %>% 
   glimpse()
 
+
+# BLAST Result for coiA and comCDE #############################################
+blast_coiA <- read.table("raw_data/blast/blastn_tabular_coiA.txt") %>% 
+  dplyr::rename_with(~ c("qseqid", "temporary_sseqid", "pident", "length", "mismatch",
+                         "gapopen", "qstart", "qend", "sstart", "send",
+                         "evalue", "bitscore")) %>% 
+  dplyr::mutate(sseqid = temporary_sseqid) %>% 
+  tidyr::separate(temporary_sseqid, into = c("temporary_ID", "temporary_contig"), sep = "contig") %>%
+  dplyr::mutate(ID = paste0(substr(temporary_ID, 1, 8), "_ukhsa_assembly_trimmed_500bp_contigs"),
+                contig = paste0(ID, "_", temporary_contig)) %>% 
+  dplyr::group_by(ID) %>%
+  dplyr::slice(which.max(pident)) %>% # Precaution: combined data below is based on max(pident) (maximum percentage of identification)
+  dplyr::ungroup() %>% 
+  dplyr::select(-temporary_ID, -temporary_contig, -sseqid) %>% 
+  dplyr::rename_with(~ paste0(., "_blast_coiA"), -ID)
+
+blast_comCDE <- read.table("raw_data/blast/blastn_tabular_comCDE.txt") %>% 
+  dplyr::rename_with(~ c("qseqid", "temporary_sseqid", "pident", "length", "mismatch",
+                         "gapopen", "qstart", "qend", "sstart", "send",
+                         "evalue", "bitscore")) %>% 
+  dplyr::mutate(sseqid = temporary_sseqid) %>% 
+  tidyr::separate(temporary_sseqid, into = c("temporary_ID", "temporary_contig"), sep = "contig") %>%
+  dplyr::mutate(ID = paste0(substr(temporary_ID, 1, 8), "_ukhsa_assembly_trimmed_500bp_contigs"),
+                contig = paste0(ID, "_", temporary_contig)) %>% 
+  dplyr::group_by(ID) %>%
+  dplyr::slice(which.max(pident)) %>% # Precaution: combined data below is based on max(pident) (maximum percentage of identification)
+  dplyr::ungroup() %>% 
+  dplyr::select(-temporary_ID, -temporary_contig, -sseqid) %>% 
+  dplyr::rename_with(~ paste0(., "_blast_comCDE"), -ID)
+
+combined_data <- combined_data %>% 
+  dplyr::left_join(blast_coiA, by = c("tre.tip.label" = "ID")) %>% 
+  dplyr::left_join(blast_comCDE, by = c("tre.tip.label" = "ID"))
+
+# Precaution: combined data below is based on max(pident) from BLAST result:
 representative_clades <- combined_data %>% 
   dplyr::filter(tre.tip.label %in% c("01474021_ukhsa_assembly_trimmed_500bp_contigs", # clade1
                                      "01474041_ukhsa_assembly_trimmed_500bp_contigs", # clade2
                                      "01474105_ukhsa_assembly_trimmed_500bp_contigs") # clade3
-                )
-
-
+  )
 ################################################################################
 # tre_gubbins <- BactDating::loadGubbins("raw_data/gubbins/n703/n703_") # gubbins output
 tre_BD <- read_rds("outputs/genomics/choosen_n703/method_strictgamma_1e6/mcmc_bacdating.rds") # BactDating output
@@ -260,6 +294,106 @@ ggplot(tre_names_long, aes(x = AA_length)) +
        y = "Count") +
     theme_bw()
 # dev.off()
+
+
+# Specified to mutations in coiA and comCDE (from BLAST output)
+# grouped by proteins
+# https://stackoverflow.com/questions/74880935/grouped-barplot-with-sd-bars-from-two-different-groups-with-ggplot2
+# Shapiro-Wilk test for normality
+# Data are clearly not following criteria for normal distribution
+
+# <tobecontinued>
+stat_KW <- kruskal.test(gene_length ~ clade, data = tre_names)
+stat_DB <- FSA::dunnTest(gene_length ~ clade, data = tre_names, method = "bonferroni")
+
+
+stat_KW <- kruskal.test(length_blast_coiA ~ clade, data = tre_names)
+
+
+
+
+tre_blast_summary <- tre_names %>% 
+  dplyr::filter(!is.na(clade)) %>% 
+  dplyr::group_by(clade) %>% 
+  dplyr::summarise(mean_l_coiA = mean(length_blast_coiA),
+                   mean_m_coiA = mean(mismatch_blast_coiA),
+                   mean_l_comCDE = mean(length_blast_comCDE),
+                   mean_m_comCDE = mean(mismatch_blast_comCDE),
+                   sd_l_coiA = sd(length_blast_coiA),
+                   sd_m_coiA = sd(mismatch_blast_coiA),
+                   sd_l_comCDE = sd(length_blast_comCDE),
+                   sd_m_comCDE = sd(mismatch_blast_comCDE)) %>% 
+  glimpse() %>% 
+  tidyr::pivot_longer(cols = -clade, names_to = c("stats", "blast", "genes"), names_sep = "_") %>%
+  pivot_wider(names_from = stats, values_from = value) %>% 
+  dplyr::mutate(blast = case_when(blast == "l" ~ "Gene sequence length",
+                                  blast == "m" ~ "Gene sequence mismatch")) %>% 
+  glimpse()
+
+# Conduct pairwise t-tests
+pairwise_tests <- tre_blast_summary %>%
+  dplyr::group_by(genes, blast) %>%
+  dplyr::do(broom::tidy(aov(mean ~ clade, data = .))) %>%
+  glimpse()
+
+# Format the results for annotation
+annotation_data <- pairwise_tests %>%
+  dplyr::filter(term == "clade") %>%
+  dplyr::mutate(label = case_when(p.value < 0.001 ~ "***",
+                                  p.value < 0.01 ~ "**",
+                                  p.value < 0.05 ~ "*",
+                                  T ~ "")) %>% 
+  glimpse()
+
+png("pictures/genomics/sequence_blast_mean_within_clades.png", width = 24, height = 12, unit = "cm", res = 1200)
+pic <- ggplot(tre_blast_summary, aes(x = clade, y = mean, fill = genes)) +
+  geom_bar(stat = "identity", position = position_dodge(), color = NA) +
+  geom_errorbar(aes(ymin = mean-sd, ymax = mean+sd), 
+                position = position_dodge(0.9), width = 0.25) +
+  facet_wrap(~ blast, scales = "free_y") +
+  labs(title = "Length and Mismatch of coiA and comCDE Across GPSC31 Clades",
+       x = "Clades of GPSC31",
+       y = "Mean Value",
+       fill = "Genes") +
+  theme_bw()
+pic +
+  geom_text(data = annotation_data, aes(x = 1.5, y = max(tre_blast_summary$mean + tre_blast_summary$sd) + 0.1, label = label), 
+            position = position_dodge(width = 0.9), color = "red")
+  
+dev.off()
+
+
+
+# Add annotations to the plot
+p + 
+
+
+# Calculate mean difference between clades (don't think this is necessary):
+mean_diff <- tre_blast_summary %>%
+  dplyr::filter(blast == "Gene sequence length") %>% 
+  dplyr::select(clade, genes, mean) %>%
+  tidyr::pivot_wider(names_from = clade, values_from = mean) %>%
+  dplyr::mutate(diff_clade1_clade2 = clade1 - clade2,
+                diff_clade1_clade3 = clade1 - clade3,
+                diff_clade2_clade3 = clade2 - clade3)
+mean_diff
+
+mean_diff_long <- mean_diff %>%
+  tidyr::pivot_longer(cols = starts_with("diff"), names_to = "comparison", values_to = "mean_diff") %>% 
+  glimpse()
+
+ggplot(mean_diff_long, aes(x = comparison, y = mean_diff, fill = genes)) +
+  geom_bar(stat = "identity", position = position_dodge(), color = "black") +
+  facet_wrap(~ genes, scales = "free_y") +
+  labs(title = "Mean Differences Between Shops",
+       x = "Comparison",
+       y = "Mean Difference",
+       fill = "Type") +
+  theme_minimal()
+
+
+
+
 
 
 # Focused on competence genes tree #############################################
@@ -349,11 +483,33 @@ gfacet_others_l
 dev.off()
 
 
+# Focused on BLAST results for coiA and comCDE
+gathered_blast_seq <- tre_names %>% 
+  dplyr::select(ID, length_blast_coiA, mismatch_blast_coiA, length_blast_comCDE, mismatch_blast_comCDE) %>% 
+  dplyr::rename(l_coiA = length_blast_coiA,
+                m_coiA  = mismatch_blast_coiA,
+                l_comCDE = length_blast_comCDE,
+                m_comCDE = mismatch_blast_comCDE)
 
+png("pictures/genomics/protein_length_competence_blast_length.png", width = 24, height = 12, unit = "cm", res = 1200)
+gfacet_blast_l <- ggtree_vacc +
+  geom_facet(panel = "Length of coiA genomic sequence", data = gathered_blast_seq, geom = geom_col, 
+             aes(x = l_coiA), orientation = 'y', width = .6) +
+  geom_facet(panel = "Length of comCDE genomic sequence", data = gathered_blast_seq, geom = geom_col, 
+             aes(x = l_comCDE), orientation = 'y', width = .6) +
+  theme_tree2(legend.position=c(.05, .85))
+gfacet_blast_l
+dev.off()
 
-
-
-
+png("pictures/genomics/protein_length_competence_blast_mismatch.png", width = 24, height = 12, unit = "cm", res = 1200)
+gfacet_blast_m <- ggtree_vacc +
+  geom_facet(panel = "Length of coiA genomic sequence mismatch", data = gathered_blast_seq, geom = geom_col, 
+             aes(x = m_coiA), orientation = 'y', width = .6) +
+  geom_facet(panel = "Length of comCDE genomic sequence mismatch", data = gathered_blast_seq, geom = geom_col, 
+             aes(x = m_comCDE), orientation = 'y', width = .6) +
+  theme_tree2(legend.position=c(.05, .85))
+gfacet_blast_m
+dev.off()
 
 
 
