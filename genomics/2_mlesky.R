@@ -2,14 +2,16 @@ library(magrittr)
 library(ape)
 library(mlesky)
 library(tidyverse)
-
-if (!require("BiocManager", quietly = TRUE)){
-  install.packages("BiocManager")
-  BiocManager::install("ggtree")
-}
+# 
+# if (!require("BiocManager", quietly = TRUE)){
+#   install.packages("BiocManager")
+#   BiocManager::install("ggtree")
+# }
 
 
 # Functions ####################################################################
+# I change the model to fit hipercow requirement by deleting ncpu usage
+
 mod_parboot <-
   function (fit, nrep = 200, ncpu = 1, dd) 
   {
@@ -28,7 +30,17 @@ mod_parboot <-
       names(sts) = fit$tre$tip.label
     }
     message("Simulating coalescent trees for parametric bootstrap: ")
-    res = pbmcapply::pbmclapply(1:nrep, function(irep) {
+    
+    # Additional setup parallel cluster for annoying Windows
+    cl <- parallel::makeCluster(ncpu)
+    on.exit(parallel::stopCluster(cl))
+    
+    # parallel::clusterExport(cl, c("fit", "af", "sts", "dd", "mlskygrid", "ddSimCoal", "simCoal"))
+    parallel::clusterExport(cl,
+                            varlist = c("fit", "af", "sts", "dd", "mlskygrid", "ddSimCoal", "simCoal"),
+                            envir = environment())
+    
+    res = parallel::parLapply(cl, 1:nrep, function(irep) {
       if (dd == T) 
         tr = ddSimCoal(sts, alphaFun = af, guessRootTime = min(c(min(sts), 
                                                                  min(fit$time))))
@@ -39,7 +51,7 @@ mod_parboot <-
                       ne0 = median(fit$ne), adapt_time_axis = FALSE, formula = fit$formula, 
                       data = fit$data, ncpu = 1, model = fit$model)
       list(ne = f1$ne, beta = f1$beta, growthrate = f1$growthrate)
-    }, mc.cores = ncpu)
+    }) #, mc.cores = ncpu)
     nemat <- do.call(cbind, lapply(res, "[[", "ne"))
     min_nemat <- apply(nemat, MARGIN = 1, min)
     max_nemat <- apply(nemat, MARGIN = 1, max)
@@ -221,49 +233,54 @@ calculate_CIs <-
     
   }
 
-# Load
-mcmc_bacdating <- read_rds("outputs/genomics/choosen_n703/method_strictgamma_1e6/mcmc_bacdating.rds")
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 4) {
-  quit(1)
+# Load #########################################################################
+# args <- commandArgs(trailingOnly = TRUE)
+# if (length(args) != 4) {
+#   quit(1)
+# }
+
+# Slightly edit the code to fit Hipercow upload!
+run_mlesky <- function(rep){
+  bactdating_obj <- readRDS("outputs/genomics/choosen_n703/method_strictgamma_1e6/mcmc_bacdating.rds")
+  # bactdating_obj <- readRDS(args[1])
+  
+  # model_index <- as.integer(bactdating_obj[3]) # because mcmc_bacdating[1] is from gubbins' & mcmc_bacdating[2] = tree
+  model_index <-
+    ifelse(bactdating_obj[[3]] == "strictgamma", 1, NA_integer_)
+  
+  adapt_val <- ifelse(bactdating_obj[4] == "TRUE",TRUE,FALSE)
+  # threads <- as.integer(bactdating_obj[5])
+  threads <- 1
+  
+  # Get strain names
+  strain_name <- c("GPSC31")
+  # ifelse(grepl("GPSC31", bactdating_obj[2]),
+  #        "GPSC31",
+  #        "GPSC2"
+  # )
+  
+  most_recent_date <- list()
+  most_recent_date[["GPSC31"]] <- 2021.989041
+  # most_recent_date[["GPSC2"]] <- 2022.221918
+  
+  message(paste("Strain:",strain_name," Model index: ",model_index," Adaptation: ",adapt_val))
+  
+  model_output <- fit_mlesky_model(bactdating_obj$tree,
+                                   strain = strain_name,
+                                   model_index = model_index,
+                                   most_recent = most_recent_date[[strain_name]],
+                                   adapt = adapt_val,
+                                   ncpu = threads,
+                                   replicates = rep)
+  
+  # Write output
+  output_fn = paste0("outputs/genomics/", strain_name,"_model_",model_index,"_adaptation_",ifelse(adapt_val,"true","false"),"_mlesky.csv")
+  write.csv(model_output,
+            file = output_fn,
+            quote = FALSE,
+            row.names = FALSE
+  )
+  
 }
 
-bactdating_obj <- mcmc_bacdating[1]
-# bactdating_obj <- readRDS(args[1])
-
-model_index <- as.integer(args[2])
-adapt_val <- ifelse(args[3] == "TRUE",TRUE,FALSE)
-threads <- as.integer(args[4])
-
-# Get strain names
-strain_name <-
-  ifelse(grepl("GPSC31",args[1]),
-         "GPSC31",
-         "GPSC2"
-  )
-
-most_recent_date <- list()
-most_recent_date[["GPSC31"]] <- 2021.989041
-most_recent_date[["GPSC2"]] <- 2022.221918
-
-message(paste("Strain:",strain_name," Model index: ",model_index," Adaptation: ",adapt_val))
-
-# No adaptation model
-# Upload
-
-model_output <- fit_mlesky_model(bactdating_obj$tree,
-                                 strain = strain_name,
-                                 model_index = model_index,
-                                 most_recent = most_recent_date[[strain_name]],
-                                 adapt = adapt_val,
-                                 ncpu = threads,
-                                 replicates = 100)
-
-# Write output
-output_fn = paste0(strain_name,"_model_",model_index,"_adaptation_",ifelse(adapt_val,"true","false"),"_mlesky.csv")
-write.csv(model_output,
-          file = output_fn,
-          quote = FALSE,
-          row.names = FALSE
-)

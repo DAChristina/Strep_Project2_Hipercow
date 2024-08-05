@@ -4,7 +4,7 @@ library(odin.dust)
 gen_sir <- odin.dust::odin_dust("inputs/sir_stochastic.R")
 
 # Running the SIR model with dust (parameters consisting of value, lo_CI, hi_CI)
-results <- read.csv("outputs/main/seasonality_waning[-10, 0]_nice_final_with_vacc/tune_initial_with_CI.csv")
+results <- read.csv("outputs/main/seasonality_waning[-10, -5]_nice_final_with_vacc_modiv_beta_trial2/tune_initial_with_CI.csv")
 pars <- list(log_A_ini = results[1,2],
              time_shift_1 = results[2,2],
              time_shift_2 = results[3,2],
@@ -14,7 +14,7 @@ pars <- list(log_A_ini = results[1,2],
              scaled_wane = results[7,2],
              log_delta = results[8,2],
              # Other fixed values:
-             max_wane = (0),
+             max_wane = (-5),
              min_wane = (-10),
              vacc = (0.9*0.862*0.02),
              sigma_1 = (1/15.75),
@@ -41,7 +41,7 @@ pars_hi_CI <- list(log_A_ini = results[1,4],
                    log_delta = results[8,4]
 )
 
-n_times <- 4745 # 4745 or similar to the number of date range (of the provided data), or try 500 for trial
+n_times <- 4745*4 # 4745 or similar to the number of date range (of the provided data), or try 500 for trial
 n_particles <- 15L
 
 sir_model <- gen_sir$new(pars = pars,
@@ -64,6 +64,8 @@ hi_CI <- array(NA, dim = c(sir_hi_CI$info()$len, n_particles, n_times))
 
 # Beta check
 time <- seq(1, n_times, 1)
+mu_0 <- 1/(80.70*365) # FIXED background mortality
+mu_1 <- 192/(4064*4745) # FIXED disease-associated mortality; ratio 192/4064 in 4745 days
 # beta_temporary <- beta_0*((1+beta_1*cos(2*pi*((time_shift_1*365)+time)/365)) + (1+beta_2*sin(2*pi*((time_shift_2*365)+time)/365)))
 beta_temporary <- pars$beta_0*((1+pars$beta_1*cos(2*pi*((pars$time_shift_1*365)+time)/365)) + (1+pars$beta_2*sin(2*pi*((pars$time_shift_2*365)+time)/365)))
 beta <- ifelse(time >= 2648, beta_temporary*(1-(0.9*0.862*0.02)), beta_temporary)
@@ -71,10 +73,14 @@ print(c(max(beta), max(beta_temporary))) # beta_temporary simulated with no infa
 print(c(min(beta), min(beta_temporary)))
 
 # R0 estimation (R0 changes due to seasonality)
-# R0_no_vacc <- beta_temporary/(10^(pars$log_delta)+pars$sigma_1+pars$))
-# R0_vacc <- (beta/(pars$log_delta+pars$sigma_1)) +  ((pars$log_delta)*(beta)) / ((pars$log_delta + 192/(4064*4745))*(pars$sigma_2 + 192/(4064*4745)))
-# max(R0)
-# min(R0)
+R0_no_vacc <- beta_temporary/((mu_0+(10^(pars$log_delta))+pars$sigma_1)*((pars$sigma_2)+(mu_0+mu_1)))
+R0_vacc <- beta/((mu_0+(10^(pars$log_delta))+pars$sigma_1)*((pars$sigma_2)+(mu_0+mu_1)))
+
+plot(time, R0_no_vacc)
+plot(time, R0_vacc)
+
+
+
 
 for (t in seq_len(n_times)) {
   model[ , , t] <- sir_model$run(t)
@@ -151,32 +157,41 @@ daily_joined <- daily_incidence_modelled %>%
   dplyr::left_join(daily_high_CI, by =  c("time", "compartment", "replicate")) %>% 
   dplyr::left_join(daily_incidence_data, by =  c("time", "compartment", "replicate"))
 
-write.csv(daily_joined, "inputs/daily_joined.csv", row.names = F)
+write.csv(daily_joined, "inputs/daily_joined_simulated4745times4.csv", row.names = F)
+write.csv(daily_incidence_modelled, "raw_data/daily_joined_longer_simulated4745times4.csv", row.names = F)
 
 Sys.sleep(10) # wait 10 secs before generate pictures
 
 ## 2. Generate pics! ###########################################################
-daily_joined <- read.csv("inputs/daily_joined.csv")
+daily_joined <- read.csv("inputs/daily_joined.csv") %>% # save data for 4745 days only
+  dplyr::mutate(date = as.Date("2003-01-01") + days(time - 1))
+daily_incidence_modelled <- read.csv("raw_data/daily_joined_longer_simulated4745times4.csv") %>% # save data for longer days
+  dplyr::mutate(date = as.Date("2003-01-01") + days(time - 1))
+
 
 # Viz daily simulation
 vaccine_UK <- data.frame(
+  date = c("2006-09-04", "2010-04-01"),
   day = c(1343, 2648),
   week = c(1343/7, 2648/7),
   y_crd = c(log1p(4e7),log1p(4e7)),
   vaccine = c("PCV7", "PCV13")) # PCV7 start 4 September 2006, PCV13 from April 2010
 # SOURCE: https://www.gov.uk/government/publications/pneumococcal-disease-caused-by-strains-in-prevenar-13-and-not-in-prevenar-7-vaccine/pneumococcal-disease-infections-caused-by-serotypes-in-prevenar-13-and-not-in-prevenar-7
 
-col_compartment <- c(Susceptible = "#8c8cd9",
-                     Asymptomatic = "darkred",
-                     Diseased = "#cc0099",
-                     Recovered = "#999966",
-                     Data_dis = "deepskyblue3"
+col_compartment <- c("Susceptible" = "#8c8cd9",
+                     "Asymptomatic" = "orange",
+                     "Diseased" = "#cc0099",
+                     "Recovered" = "#999966",
+                     "Data_dis" = "lightblue3",
+                     # Vaccination
+                     "PCV7" = "gray70",
+                     "PCV13" = "gray20"
 )
 
-png("pictures/data_plus_model_daily.png", width = 17, height = 12, unit = "cm", res = 1200)
-ggplot(daily_joined, aes(x = time, y = value_model,
-                         group = interaction(compartment,replicate),
-                         colour = compartment)) +
+png("pictures/data_plus_model_daily_simulated4745times4.png", width = 24, height = 12, unit = "cm", res = 1200)
+ggplot(daily_incidence_modelled, aes(x = date, y = value_model,
+                                     group = interaction(compartment,replicate),
+                                     colour = compartment)) +
   geom_line() +
   geom_line(data = daily_joined %>% 
               dplyr::filter(compartment == "Diseased",
@@ -185,20 +200,21 @@ ggplot(daily_joined, aes(x = time, y = value_model,
                               case_when(compartment == "Diseased" ~ "Data_dis")),
             aes(y = value_data, colour = compartment),
             show.legend = T) +
-  geom_vline(data = vaccine_UK, aes(xintercept = day,
-                                    colour = "black"),
+  geom_vline(data = vaccine_UK, aes(xintercept = as.Date(vaccine_UK$date),
+                                    colour = vaccine),
              linetype = "dashed") +
-  # geom_label(data = vaccine_UK, aes(x = day, y = y_crd, label = vaccine),
-  #            colour = "black") +
   scale_color_manual(values = c(col_compartment),
                      name = "States",
-                     breaks = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Data_dis"),
-                     labels = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Diseased Data")
+                     breaks = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Data_dis", "PCV7", "PCV13"),
+                     labels = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Diseased Data", "PCV7", "PCV13")
   ) +
   scale_y_continuous(trans = "log1p") +
-  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in x-axis
-  ggtitle("Serotype 1 Cases (Aggregated by Days)") +
-  xlab("Time (in Day)") +
+  scale_x_date(date_breaks = "5 years",
+               # date_minor_breaks = "1 month",
+               date_labels = "%Y") + # try "%b %Y"
+  xlim(as.Date(c('1/1/2003', '12/12/2030'), format="%d/%m/%Y")) + # edit this for data fitting: 20/10/2015
+  ggtitle("Simulation Model for Serotype 1 Cases (Aggregated by Days)") +
+  xlab("Time") +
   ylab("Number of People") +
   theme_bw()
 dev.off()
@@ -210,6 +226,7 @@ daily_joined <- daily_joined %>%
 weekly_joined <- daily_joined %>% 
   dplyr::group_by(replicate, weekly, compartment) %>% 
   dplyr::summarise(value_model = sum(value_model, na.rm = T),
+                   date = max(date),
                    value_low_CI = sum(value_low_CI, na.rm = T),
                    value_high_CI = sum(value_high_CI, na.rm = T),
                    value_data = sum(value_data, na.rm = T),
@@ -218,8 +235,21 @@ weekly_joined <- daily_joined %>%
   dplyr::mutate(value_data = case_when(replicate > 1 ~ NA,
                                        .default = as.numeric(value_data)))
 
-png("pictures/data_plus_model_weekly.png", width = 17, height = 12, unit = "cm", res = 1200)
-ggplot(weekly_joined, aes(x = weekly, y = value_model,
+weekly_incidence_modelled <- daily_incidence_modelled %>% 
+  dplyr::mutate(weekly = ceiling(time/7)) %>% 
+  dplyr::group_by(replicate, weekly, compartment) %>% 
+  dplyr::summarise(value_model = sum(value_model, na.rm = T),
+                   date = max(date),
+                   # value_low_CI = sum(value_low_CI, na.rm = T),
+                   # value_high_CI = sum(value_high_CI, na.rm = T),
+                   # value_data = sum(value_data, na.rm = T),
+                   .groups = "drop") %>% 
+  dplyr::ungroup() #%>% 
+  # dplyr::mutate(value_data = case_when(replicate > 1 ~ NA,
+  #                                      .default = as.numeric(value_data)))
+
+png("pictures/data_plus_model_weekly_simulated4745times4.png", width = 24, height = 12, unit = "cm", res = 1200)
+ggplot(weekly_incidence_modelled, aes(x = date, y = value_model,
                           group = interaction(compartment,replicate),
                           colour = compartment)) +
   geom_line() +
@@ -229,19 +259,24 @@ ggplot(weekly_joined, aes(x = weekly, y = value_model,
               dplyr::mutate(compartment = 
                               case_when(compartment == "Diseased" ~ "Data_dis")),
             aes(y = value_data, colour = compartment),
+            size = 1.1,
             show.legend = T) +
-  geom_vline(data = vaccine_UK, aes(xintercept = week,
-                                    colour = "black"),
+  geom_vline(data = vaccine_UK, aes(xintercept = as.Date(vaccine_UK$date),
+                                    colour = vaccine),
              linetype = "dashed") +
   # geom_label(data = vaccine_UK, aes(x = week, y = y_crd, label = vaccine),
   #            colour = "black") +
   scale_color_manual(values = c(col_compartment),
                      name = "States",
-                     breaks = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Data_dis"),
-                     labels = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Diseased Data")
+                     breaks = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Data_dis", "PCV7", "PCV13"),
+                     labels = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Diseased Data", "PCV7", "PCV13")
   ) +
   scale_y_continuous(trans = "log1p") +
-  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in x-axis
+  scale_x_date(date_breaks = "5 years",
+               # date_minor_breaks = "1 month",
+               date_labels = "%Y") + # try "%b %Y"
+  xlim(as.Date(c('1/1/2003', '12/12/2030'), format="%d/%m/%Y")) + # edit this for data fitting: 20/10/2015
+  ggtitle("Simulation Model for Serotype 1 Cases (Aggregated by Days)") +
   ggtitle("Serotype 1 Cases (Aggregated by Weeks)") +
   xlab("Time (in Week)") +
   ylab("Number of People") +
@@ -252,36 +287,48 @@ dev.off()
 weekly_D_only <- weekly_joined %>% 
   dplyr::filter(compartment == "Diseased")
 
-png("pictures/data_plus_model_weekly_diseased_only.png", width = 17, height = 12, unit = "cm", res = 1200)
-col_imD_weekly <- c(cases_weekly = "deepskyblue3",
+weekly_modelled_longer <- weekly_incidence_modelled %>% 
+  dplyr::filter(compartment == "Diseased")
+
+png("pictures/data_plus_model_weekly_diseased_only_simulated4745times4.png", width = 24, height = 12, unit = "cm", res = 1200)
+col_imD_weekly <- c(cases_weekly = "lightblue3",
                     model_weekly = "#cc0099",
-                    CIs = "yellow")
-ggplot(weekly_D_only, aes(x = weekly,
+                    CIs = "yellow",
+			  # Vaccination
+                     "PCV7" = "gray70",
+                     "PCV13" = "gray20"
+)
+ggplot(weekly_modelled_longer, aes(x = date,
                           group = interaction(compartment,replicate),
                           colour = compartment)) +
  
-  geom_line(aes(y = value_low_CI, colour = "CIs")) + # --> low CI
-  geom_line(aes(y = value_high_CI, colour = "CIs")) + # --> high CI
+  # geom_line(aes(y = value_low_CI, colour = "CIs")) + # --> low CI
+  # geom_line(aes(y = value_high_CI, colour = "CIs")) + # --> high CI
   
   geom_line(aes(y = value_model, colour = "model_weekly")) + # --> model
-  geom_line(aes(y = value_data, colour = "cases_weekly")) + # --> data
-  
-  geom_vline(data = vaccine_UK, aes(xintercept = week,
-                                    colour = "black"),
+  # geom_line(aes(y = value_data, colour = "cases_weekly")) + # --> data
+  geom_line(data = weekly_joined %>% 
+              dplyr::filter(compartment == "Diseased",
+                            !is.na(value_data)) %>% 
+              dplyr::mutate(compartment = 
+                              case_when(compartment == "Diseased" ~ "cases_weekly")),
+            aes(y = value_data, colour = compartment),
+            show.legend = T,
+            size = 1.1) +
+  geom_vline(data = vaccine_UK, aes(xintercept = as.Date(vaccine_UK$date),
+                                    colour = vaccine),
              linetype = "dashed") +
-  geom_label(aes(x = 1343/7, y = 45, label = "PCV7"),
-             fill = "white", color = "black") + # 2006 = PCV7
-  geom_label(aes(x = 2648/7, y = 45, label = "PCV13"),
-             fill = "white", color = "black") + # 2011 = PCV13
-  scale_x_continuous() +
-  # scale_y_continuous(trans = "log1p") +
+  scale_x_date(date_breaks = "5 years",
+               # date_minor_breaks = "1 month",
+               date_labels = "%Y") + # try "%b %Y"
+  xlim(as.Date(c('1/1/2003', '12/12/2015'), format="%d/%m/%Y")) + # edit this for data fitting: 20/10/2015
   scale_color_manual(values = col_imD_weekly,
                      name = "Cases",
-                     breaks = c("cases_weekly", "model_weekly"),
-                     labels = c("Data", "Model")
+                     breaks = c("cases_weekly", "model_weekly", "PCV7", "PCV13"),
+                     labels = c("Data", "Model", "PCV7", "PCV13")
   ) +
-  ggtitle("The Comparison of Model Output and Counts of Serotype 1 in England") +
-  xlab("Week") +
+  ggtitle("The Comparison of Model Output and Daily Epidemiological Data of Serotype 1 in England") +
+  xlab("Year") +
   ylab("Serotype 1 Cases (Aggregated by Week)") +
   theme_bw()
 dev.off()

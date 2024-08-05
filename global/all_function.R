@@ -86,7 +86,7 @@ prepare_priors <- function(pars) {
     dgamma(s, shape = 1, scale = 0.1, log = TRUE)
   }
   priors$scaled_wane <- function(s) {
-    dbeta(s, shape1 = 1.25, shape2 = 1.25, log = TRUE)
+    dbeta(s, shape1 = 2.5, shape2 = 2.5, log = TRUE)
   }
   priors$log_delta <- function(s) {
     dunif(s, min = (-10), max = 0.7, log = TRUE)

@@ -11,9 +11,9 @@ odin.dust
 coda
 dust
 ape
-magnittr
-BiocManager
-BiocManager::ggtree
+magrittr
+#biocmanager
+#biocmanager::ggtree
 
 epiforecasts/socialmixr
 ggobi/ggally

@@ -7,100 +7,123 @@ library(BactDating)
 ## 1. Data Viz and Analysis! ###################################################
 # New updated data with meningitis (25.04.2024)
 # All df are stored in raw_data
-dat <- readxl::read_excel("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_withdeath_meningitis_clean.xlsx") #%>% 
-# glimpse()
+dat <- dplyr::full_join(
+  readxl::read_excel("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_withdeath_meningitis_clean.xlsx") %>% 
+    dplyr::rename(Earliest.specimen.date = Earliestspecimendate,
+                  current.region.name = currentregionname) %>% 
+    dplyr::select(-sequenced),
+  # The link to sequenced IDs
+  readxl::read_excel("raw_data/gubbins/ukhsa_assemblies_02_07_24.xlsx"),
+  by = "ID"
+)
 
-dat <- dat %>% 
+
+# Additional data from 2015 and other sequenced samples (n = 9 + n = 2):
+add_n11 <- dplyr::bind_rows(
+  readxl::read_excel("raw_data/nine_missing_specimen_date_serotype1_extended.xlsx"),
+  readxl::read_excel("raw_data/two_missing_specimen_date_serotype1_extended.xlsx")
+) %>% 
+  dplyr::mutate(RevisedOPIEID = NA) %>% 
   dplyr::rename(Earliest.specimen.date = Earliestspecimendate,
-         current.region.name = currentregionname)
+                current.region.name = currentregionname) %>% 
+  dplyr::select(ID, RevisedOPIEID, Earliest.specimen.date, AGEYR,
+                current.region.name, MeningitisFlag, `30daydeath`,
+                ngsid, assembly_name)
 
-dat_G <- dat %>% 
-  dplyr::mutate(AGEYR = ifelse(AGEYR >= 90, 90, as.numeric(AGEYR)), # For incidence calculation, data grouped for people aged 90+
-         year = year(Earliest.specimen.date),
-         month = month(Earliest.specimen.date),
-         vacc = case_when(
-           year < 2006 ~ "Pre-PCV7",
-           year >= 2006 & year < 2011 ~ "PCV7",
-           year >= 2011 ~ "PCV13",
-           TRUE ~ NA_character_
-         ),
-         ageGroup = case_when( # edit 5 age bands
-           AGEYR < 5 ~ "<5",
-           AGEYR >= 5 & AGEYR < 19 ~ "5-18",
-           AGEYR >= 19 & AGEYR < 31 ~ "19-30",
-           AGEYR >= 31 & AGEYR < 65 ~ "31-64",
-           AGEYR >= 65 ~ "65+",
-           is.na(AGEYR) ~ "Unknown" # 16 IDs have no AGEYR
-         ),
-         ageGroup7 = case_when(
-           AGEYR < 2 ~ "<2",
-           AGEYR >= 2 & AGEYR < 5 ~ "2-4",
-           AGEYR >= 5 & AGEYR < 15 ~ "5-14",
-           AGEYR >= 15 & AGEYR < 31 ~ "15-30", # Edit the Age-band into 15-30 & 31-44
-           AGEYR >= 31 & AGEYR < 45 ~ "31-44", # Edit the Age-band into 15-30 & 31-44
-           AGEYR >= 45 & AGEYR < 65 ~ "45-64",
-           AGEYR >= 65 ~ "65+",
-           is.na(AGEYR) ~ "Unknown" # 16 IDs have no AGEYR
-         ),
-         ageGroup2 = case_when(
-           AGEYR < 15 ~ "children",
-           AGEYR >= 15 ~ "adults",
-           is.na(AGEYR) ~ "Unknown" # 16 IDs have no AGEYR
-         ),
-         current.region.name = ifelse(current.region.name == "EASTERN", "EAST", current.region.name), # Wrong perception of "EASTERN" that should be "EAST"
-         current.region.name = case_when(
-           current.region.name == "E MIDS" ~ "East Midlands",
-           current.region.name == "EAST" ~ "East of England",
-           current.region.name == "LONDON" ~ "London",
-           current.region.name == "N EAST" ~ "North East",
-           current.region.name == "N WEST" ~ "North West",
-           current.region.name == "S EAST" ~ "South East",
-           current.region.name == "S WEST" ~ "South West",
-           current.region.name == "W MIDS" ~ "West Midlands",
-           current.region.name == "YORK&HUM" ~ "Yorkshire and The Humber",
-           TRUE ~ current.region.name
-         ),
-         ageLabel = ifelse(AGEYR >= 90, 90, as.numeric(AGEYR)), # For incidence calculation, data grouped for people aged 90+
-  ) #%>% 
-  # glimpse()
+dat_G <- dplyr::bind_rows(dat, add_n11) %>% 
+  # dat %>% 
+  dplyr::mutate(ngsid = as.numeric(ngsid),
+                AGEYR = ifelse(AGEYR >= 90, 90, as.numeric(AGEYR)), # For incidence calculation, data grouped for people aged 90+
+                year = year(Earliest.specimen.date),
+                month = month(Earliest.specimen.date),
+                vacc = case_when(
+                  year < 2006 ~ "Pre-PCV7",
+                  year >= 2006 & year < 2011 ~ "PCV7",
+                  year >= 2011 ~ "PCV13",
+                  TRUE ~ NA_character_
+                ),
+                ageGroup = case_when( # edit 5 age bands
+                  AGEYR < 5 ~ "<5",
+                  AGEYR >= 5 & AGEYR < 19 ~ "5-18",
+                  AGEYR >= 19 & AGEYR < 31 ~ "19-30",
+                  AGEYR >= 31 & AGEYR < 65 ~ "31-64",
+                  AGEYR >= 65 ~ "65+",
+                  is.na(AGEYR) ~ "Unknown" # 16 IDs have no AGEYR
+                ),
+                ageGroup7 = case_when(
+                  AGEYR < 2 ~ "<2",
+                  AGEYR >= 2 & AGEYR < 5 ~ "2-4",
+                  AGEYR >= 5 & AGEYR < 15 ~ "5-14",
+                  AGEYR >= 15 & AGEYR < 31 ~ "15-30", # Edit the Age-band into 15-30 & 31-44
+                  AGEYR >= 31 & AGEYR < 45 ~ "31-44", # Edit the Age-band into 15-30 & 31-44
+                  AGEYR >= 45 & AGEYR < 65 ~ "45-64",
+                  AGEYR >= 65 ~ "65+",
+                  is.na(AGEYR) ~ "Unknown" # 16 IDs have no AGEYR
+                ),
+                ageGroup2 = case_when(
+                  AGEYR < 15 ~ "children",
+                  AGEYR >= 15 ~ "adults",
+                  is.na(AGEYR) ~ "Unknown" # 16 IDs have no AGEYR
+                ),
+                current.region.name = ifelse(current.region.name == "EASTERN", "EAST", current.region.name), # Wrong perception of "EASTERN" that should be "EAST"
+                current.region.name = case_when(
+                  current.region.name == "E MIDS" ~ "East Midlands",
+                  current.region.name == "EAST" ~ "East of England",
+                  current.region.name == "LONDON" ~ "London",
+                  current.region.name == "N EAST" ~ "North East",
+                  current.region.name == "N WEST" ~ "North West",
+                  current.region.name == "S EAST" ~ "South East",
+                  current.region.name == "S WEST" ~ "South West",
+                  current.region.name == "W MIDS" ~ "West Midlands",
+                  current.region.name == "YORK&HUM" ~ "Yorkshire and The Humber",
+                  TRUE ~ current.region.name
+                ),
+                ageLabel = ifelse(AGEYR >= 90, 90, as.numeric(AGEYR)), # For incidence calculation, data grouped for people aged 90+
+  )
+
+# Mannually delete 3 rows with duplicated IDs 
+# because distinct() & arrange()-filter() failed to produce what I really want
+write.csv(dat_G, "raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced.csv", row.names = FALSE)
+
+dat_G <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_cleaned.csv")
 
 # EpiDescription based on incidences and CI
 # Total population data by age, year for each region
 # SOURCE: https://www.nomisweb.co.uk/
 pop <- readxl::read_excel("raw_data/nomis_2024_04_15_124553_DCedit.xlsx") #%>% 
-  # glimpse()
+# glimpse()
 
 pop_l <- pop %>% 
   tidyr::pivot_longer(cols = `2001`:`2022`,
-               names_to = "Year",
-               values_to = "PopSize") %>% 
+                      names_to = "Year",
+                      values_to = "PopSize") %>% 
   dplyr::mutate(Age = gsub("Age ", "", Age),
-         Age = ifelse(Age == "Aged 90+", 90, as.numeric(Age)), # For incidence calculation, data grouped for people aged 90+
-         ageGroup = case_when( # edit 5 age bands
-           Age < 5 ~ "<5",
-           Age >= 5 & Age < 19 ~ "5-18",
-           Age >= 19 & Age < 31 ~ "19-30",
-           Age >= 31 & Age < 65 ~ "31-64",
-           Age >= 65 ~ "65+",
-           is.na(Age) ~ "Unknown" # 16 IDs have no Age
-           # TRUE ~ "Unknown" 
-         ),
-         ageGroup7 = case_when(
-           Age < 2 ~ "<2",
-           Age >= 2 & Age < 5 ~ "2-4",
-           Age >= 5 & Age < 15 ~ "5-14",
-           Age >= 15 & Age < 31 ~ "15-30", # Edit the Age-band into 15-30 & 31-44
-           Age >= 31 & Age < 45 ~ "31-44", # Edit the Age-band into 15-30 & 31-44
-           Age >= 45 & Age < 65 ~ "45-64",
-           Age >= 65 ~ "65+",
-           is.na(Age) ~ "Unknown" # 16 IDs have no AGEYR
-         ),
-         ageGroup2 = case_when(
-           Age < 15 ~ "children",
-           Age >= 15 ~ "adults",
-           is.na(Age) ~ "Unknown" # 16 IDs have no AGEYR
-         ),
-         Year = as.numeric(Year)) %>% 
+                Age = ifelse(Age == "Aged 90+", 90, as.numeric(Age)), # For incidence calculation, data grouped for people aged 90+
+                ageGroup = case_when( # edit 5 age bands
+                  Age < 5 ~ "<5",
+                  Age >= 5 & Age < 19 ~ "5-18",
+                  Age >= 19 & Age < 31 ~ "19-30",
+                  Age >= 31 & Age < 65 ~ "31-64",
+                  Age >= 65 ~ "65+",
+                  is.na(Age) ~ "Unknown" # 16 IDs have no Age
+                  # TRUE ~ "Unknown" 
+                ),
+                ageGroup7 = case_when(
+                  Age < 2 ~ "<2",
+                  Age >= 2 & Age < 5 ~ "2-4",
+                  Age >= 5 & Age < 15 ~ "5-14",
+                  Age >= 15 & Age < 31 ~ "15-30", # Edit the Age-band into 15-30 & 31-44
+                  Age >= 31 & Age < 45 ~ "31-44", # Edit the Age-band into 15-30 & 31-44
+                  Age >= 45 & Age < 65 ~ "45-64",
+                  Age >= 65 ~ "65+",
+                  is.na(Age) ~ "Unknown" # 16 IDs have no AGEYR
+                ),
+                ageGroup2 = case_when(
+                  Age < 15 ~ "children",
+                  Age >= 15 ~ "adults",
+                  is.na(Age) ~ "Unknown" # 16 IDs have no AGEYR
+                ),
+                Year = as.numeric(Year)) %>% 
   glimpse()
 
 # Vaccination programme:
@@ -122,34 +145,54 @@ pop_year <- pop_l %>%
   dplyr::ungroup()
 
 all_combined <- merge(all_year, pop_year,
-                       by.x = c("year"),
-                       by.y = c("Year")) %>%
+                      by.x = c("year"),
+                      by.y = c("Year")) %>%
   dplyr::mutate(Conf_Int = epitools::binom.exact(counts, PopSize),
                 incid_Ser1 = Conf_Int$proportion) # per-100,000 population
 
 # Colour names:
 # https://www.datanovia.com/en/blog/awesome-list-of-657-r-color-names/
-col_map <- c(# 5 age bands 
-             "<5" = "indianred4",
-             "5-18" = "orange",
-             "19-30" = "seagreen4",
-             "31-64" = "steelblue",
-             "65+" = "purple3",
-             "Unknown" = "black",
-             # 7 age bands
-             "<2" = "indianred4", 
-             "2-4" = "indianred2", 
-             "5-14" = "orange",
-             "15-30" = "seagreen1", # Edit the Age-band into 15-30 & 31-44
-             "31-44" = "seagreen4", # Edit the Age-band into 15-30 & 31-44
-             "45-64" = "steelblue",
-             "65+" = "purple3",
-             # 2 age bands
-             "children" = "darkred",
-             "adults" = "darkblue"
+col_map <- c(
+  # Vaccination
+  "Pre-PCV7" = "lightblue",
+  "PCV7" = "gray70",
+  "PCV13" = "gray20",
+  # 5 age bands 
+  "<5" = "indianred4",
+  "5-18" = "orange",
+  "19-30" = "seagreen4",
+  "31-64" = "steelblue",
+  "65+" = "purple3",
+  "Unknown" = "black",
+  # 7 age bands
+  "<2" = "indianred4", 
+  "2-4" = "indianred2", 
+  "5-14" = "orange",
+  "15-30" = "seagreen1", # Edit the Age-band into 15-30 & 31-44
+  "31-44" = "seagreen4", # Edit the Age-band into 15-30 & 31-44
+  "45-64" = "steelblue",
+  "65+" = "purple3",
+  # 2 age bands
+  "children" = "darkred",
+  "adults" = "darkblue",
+  # Regions (From north to south)
+  "North West" = "indianred4",
+  "North East" = "steelblue",
+  "Yorkshire and The Humber" = "seagreen4",
+  "East Midlands" = "purple3",
+  "West Midlands" = "orange",
+  "East of England" = "indianred2",
+  "London" = "seagreen1",
+  "South East" = "deepskyblue",
+  "South West" = "gold1",
+  # Cases vs sequenced
+  "Serotype 1 Case" = "gray75",
+  "Sequenced" = "deepskyblue3",
+  "Meningitis" = "green",
+  "30 Day Death" = "maroon"
 )
 
-vacc_map <- c("PCV7" = "gray80",
+vacc_map <- c("PCV7" = "gray70",
               "PCV13" = "gray20")
 
 col_imD <- c(incid_Ser1 = "deepskyblue3",
@@ -212,17 +255,17 @@ pop_ageGroup2 <- pop_l %>%
   dplyr::ungroup()
 
 all_ageGroup2 <- merge(ageGroup2, pop_ageGroup2,
-               by.x = c("year","ageGroup2"),
-               by.y = c("Year", "ageGroup2")) %>%
+                       by.x = c("year","ageGroup2"),
+                       by.y = c("Year", "ageGroup2")) %>%
   dplyr::mutate(Conf_Int = epitools::binom.exact(counts, PopSize),
-         incid_Ser1 = Conf_Int$proportion) # per-100,000 population
+                incid_Ser1 = Conf_Int$proportion) # per-100,000 population
 
 write.csv(all_ageGroup2, "raw_data/incidence_CI_per_year_2_ageGroup.csv", row.names = FALSE)
 
 # Viz counts
 png("pictures/counts_2ageGroups.png", width = 17, height = 12, unit = "cm", res = 1200)
 ggplot(all_ageGroup2, aes(x = year, y = counts, group = ageGroup2,
-                color = ageGroup2)) +
+                          color = ageGroup2)) +
   geom_line(size = 1.5) +
   geom_vline(data = vaccine_UK, aes(xintercept = year,
                                     colour = vaccine),
@@ -246,7 +289,7 @@ dev.off()
 # Viz incidence
 png("pictures/incidence_2ageGroups.png", width = 17, height = 12, unit = "cm", res = 1200)
 ggplot(all_ageGroup2, aes(x = year, y = Conf_Int$proportion*100000, group = ageGroup2,
-                  color = ageGroup2)) +
+                          color = ageGroup2)) +
   geom_line(size = 1.5) +
   geom_errorbar(aes(ymin = Conf_Int$lower*100000, ymax = Conf_Int$upper*100000), # It doesn't matter whether I add the CI or not because the Pop data is quite huge, I suppose (?)
                 width = .1) +
@@ -318,7 +361,7 @@ dev.off()
 # Viz incidence
 png("pictures/incidence_5ageGroups.png", width = 17, height = 12, unit = "cm", res = 1200)
 ggplot(all_ageGroup5, aes(x = year, y = Conf_Int$proportion*100000, group = ageGroup,
-                  color = ageGroup)) +
+                          color = ageGroup)) +
   geom_line(size = 1.5) +
   geom_errorbar(aes(ymin = Conf_Int$lower*100000, ymax = Conf_Int$upper*100000), # It doesn't matter whether I add the CI or not because the Pop data is quite huge, I suppose (?)
                 width = .1) +
@@ -362,6 +405,13 @@ all_ageGroup7 <- merge(ageGroup7, pop_ageGroup7,
                 incid_Ser1 = Conf_Int$proportion) # per-100,000 population
 
 write.csv(all_ageGroup7, "raw_data/incidence_CI_per_year_7_ageGroup.csv", row.names = FALSE)
+
+# Kruskal test
+kruskal.test(Conf_Int$proportion ~ ageGroup7, data = all_ageGroup7)
+
+# Post-hoc
+FSA::dunnTest(Conf_Int$proportion ~ ageGroup7, data = all_ageGroup7, method = "bonferroni")
+
 
 # Viz counts
 png("pictures/counts_7ageGroups.png", width = 17, height = 12, unit = "cm", res = 1200)
@@ -416,7 +466,164 @@ ggplot(all_ageGroup7, aes(x = year, y = Conf_Int$proportion*100000, group = ageG
   theme_bw()
 dev.off()
 
-# Basic case count data without age structure or regions
+
+# CI calculations for 9 Regions
+region <- dat_G %>% 
+  dplyr::group_by(year, current.region.name) %>% 
+  dplyr::summarise(counts = n()) %>% 
+  dplyr::ungroup()
+
+pop_region <- pop_l %>% 
+  dplyr::group_by(Year, Region) %>% 
+  dplyr::summarise(PopSize = sum(PopSize)) %>% 
+  dplyr::ungroup()
+
+all_reg <- merge(region, pop_region,
+                 by.x = c("year","current.region.name"),
+                 by.y = c("Year", "Region")) %>%
+  dplyr::mutate(Conf_Int = epitools::binom.exact(counts, PopSize),
+                incid_Ser1 = Conf_Int$proportion) # per-100,000 population
+
+write.csv(all_reg, "raw_data/incidence_CI_per_year_region.csv", row.names = FALSE)
+
+# Viz counts
+png("pictures/counts_yearRegion.png", width = 20, height = 12, unit = "cm", res = 1200)
+ggplot(all_reg, aes(x = year, y = counts, group = current.region.name,
+                    color = current.region.name)) +
+  geom_line(size = 1.5) +
+  geom_vline(data = vaccine_UK, aes(xintercept = year),
+             colour = "black",
+             linetype = "dashed") +
+  scale_color_manual(values = c(col_map),
+                     name = "Region",
+                     breaks = c("North West", "North East", "Yorkshire and The Humber",
+                                "East Midlands", "West Midlands", "East of England",
+                                "London", "South East", "South West"),
+                     labels =  c("North West", "North East", "Yorkshire and The Humber",
+                                 "East Midlands", "West Midlands", "East of England",
+                                 "London", "South East", "South West")
+  ) +
+  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+  geom_label(aes(x = 2006, y = 100, label = "PCV7"),
+             fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+  geom_label(aes(x = 2011, y = 100, label = "PCV13"),
+             fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+  ggtitle("The Counts of Serotype 1 in England by Region") +
+  xlab("Year") +
+  ylab("Serotype 1 Cases") +
+  theme_bw()
+dev.off()
+
+# Viz incidence
+png("pictures/incidence_yearRegion.png", width = 20, height = 12, unit = "cm", res = 1200)
+ggplot(all_reg, aes(x = year, y = Conf_Int$proportion*100000, group = current.region.name,
+                    color = current.region.name)) +
+  geom_line(size = 1.5) +
+  geom_errorbar(aes(ymin = Conf_Int$lower*100000, ymax = Conf_Int$upper*100000), # It doesn't matter whether I add the CI or not because the Pop data is quite huge, I suppose (?)
+                width = .1) +
+  geom_vline(data = vaccine_UK, aes(xintercept = year,
+                                    colour = vaccine),
+             linetype = "dashed") +
+  scale_color_manual(values = c(col_map),
+                     name = "Region",
+                     breaks = c("North West", "North East", "Yorkshire and The Humber",
+                                "East Midlands", "West Midlands", "East of England",
+                                "London", "South East", "South West"),
+                     labels =  c("North West", "North East", "Yorkshire and The Humber",
+                                 "East Midlands", "West Midlands", "East of England",
+                                 "London", "South East", "South West")
+  ) +
+  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+  scale_linetype_manual(values = c(vacc_map),
+                        name = "Vaccine",
+                        labels = c("PCV7", "PCV13")) +
+  geom_label(aes(x = 2006, y = 2.5, label = "PCV7"),
+             fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+  geom_label(aes(x = 2011, y = 2.5, label = "PCV13"),
+             fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+  ggtitle("The Incidence of Serotype 1 in England \nby Region (per 100,000)") +
+  xlab("Year") +
+  ylab("Serotype 1 Incidence") +
+  theme_bw()
+dev.off()
+
+# Basic table for region-ageGroup counts
+regAgeGroup_details <- dat_G %>% 
+  dplyr::mutate(
+    Meningitis = case_when(
+      MeningitisFlag == "Y" ~ 1,
+      MeningitisFlag == "N" ~ 0,
+      TRUE ~ NA_real_ # basically numeric
+    ),
+    Death = case_when(
+      X30daydeath == "D" ~ 1,
+      is.na(X30daydeath) ~ 0
+      # TRUE ~ NA_real_
+    )
+  ) %>% 
+  dplyr::group_by(current.region.name, ageGroup7) %>% 
+  dplyr::summarise("Serotype 1 Case" = n(),
+                   "Meningitis" = sum(Meningitis),
+                   "30 Day Death" = sum(Death)) %>% 
+  dplyr::ungroup()
+
+reg_byRegionOnly <- regAgeGroup_details %>% 
+  dplyr::group_by(current.region.name) %>% 
+  dplyr::summarise("Serotype 1 Case" = sum(`Serotype 1 Case`),
+                   "Meningitis" = sum(Meningitis),
+                   "30 Day Death" = sum(`30 Day Death`)) %>% 
+  dplyr::ungroup()
+
+
+# Facet wrap region, year and ageGroup7 ########################################
+ageGroup7_region <- dat_G %>% 
+  dplyr::group_by(current.region.name, year, ageGroup7) %>% 
+  dplyr::summarise(counts = n()) %>% 
+  dplyr::ungroup()
+
+pop_ageGroup7_region <- pop_l %>% 
+  dplyr::group_by(Region, Year, ageGroup7) %>% 
+  dplyr::summarise(PopSize = sum(PopSize)) %>% 
+  dplyr::ungroup()
+
+all_ageGroup7_region <- merge(ageGroup7_region, pop_ageGroup7_region,
+                              by.x = c("current.region.name", "year","ageGroup7"),
+                              by.y = c("Region", "Year", "ageGroup7")) %>%
+  dplyr::mutate(Conf_Int = epitools::binom.exact(counts, PopSize),
+                incid_Ser1 = Conf_Int$proportion) # per-100,000 population
+
+
+png("pictures/incidence_7ageGroups_region.png", width = 24, height = 12, unit = "cm", res = 1200)
+ggplot(all_ageGroup7_region, aes(x = year, y = Conf_Int$proportion*100000, group = ageGroup7,
+                                 color = ageGroup7)) +
+  geom_line(size = 0.7) +
+  geom_errorbar(aes(ymin = Conf_Int$lower*100000, ymax = Conf_Int$upper*100000), # It doesn't matter whether I add the CI or not because the Pop data is quite huge, I suppose (?)
+                width = .1) +
+  geom_vline(data = vaccine_UK, aes(xintercept = year,
+                                    colour = vaccine),
+             linetype = "dashed") +
+  scale_color_manual(values = c(col_map),
+                     name = "Demographic",
+                     breaks = c("<2", "2-4", "5-14", "15-30", "31-44", "45-64", "65+", "Unknown", "PCV7", "PCV13"),
+                     labels = c("<2", "2-4", "5-14", "15-30", "31-44", "45-64", "65+", "Unknown", "PCV7", "PCV13")
+  ) +
+  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+  # scale_linetype_manual(values = c(vacc_map),
+  #                       name = "Vaccine",
+  #                       labels = c("PCV7", "PCV13")) +
+  # geom_label(aes(x = 2006, y = 2.5, label = "PCV7"),
+  #            fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+  # geom_label(aes(x = 2011, y = 2.5, label = "PCV13"),
+  #            fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+  ggtitle("The Incidence of Serotype 1 in England \nby Demographic Groups (per 100,000)") +
+  xlab("Year") +
+  ylab("Serotype 1 Incidence") +
+  facet_wrap(~ current.region.name, scales = "free_y") +
+  theme_bw()
+dev.off()
+
+
+# Basic case count data without age structure or regions #######################
 # Create all hypothetical recorded disease date
 dat_G$Earliest.specimen.date <- as.Date(dat_G$Earliest.specimen.date)
 all_date <- data.frame(allDate = seq.Date(from = min(dat_G$Earliest.specimen.date),
@@ -440,7 +647,7 @@ Natm_nmeningitis <- dat_G %>%
 # glimpse()
 
 Natm_n30DDeath <- dat_G %>% 
-  dplyr::filter(`30daydeath` == "D") %>% 
+  dplyr::filter(X30daydeath == "D") %>% 
   dplyr::group_by(Earliest.specimen.date) %>% 
   dplyr::summarise(counts_30DDeath = n()) %>% 
   dplyr::ungroup() #%>% 
@@ -449,15 +656,15 @@ Natm_n30DDeath <- dat_G %>%
 
 # Create a new df based on counts per day for Serotype 1, meningitis, and 30 days death
 Natm_n_i <- dplyr::full_join(all_date, Natm_ni,
-                      by = c("allDate" = "Earliest.specimen.date"))
+                             by = c("allDate" = "Earliest.specimen.date"))
 
 Natm_n_im <- dplyr::full_join(Natm_n_i, Natm_nmeningitis,
-                       by = c("allDate" = "Earliest.specimen.date"))
+                              by = c("allDate" = "Earliest.specimen.date"))
 
 Natm_n_imD <- dplyr::full_join(Natm_n_im, Natm_n30DDeath,
-                        by = c("allDate" = "Earliest.specimen.date")) %>% 
+                               by = c("allDate" = "Earliest.specimen.date")) %>% 
   replace(is.na(.), 0) #%>% # NA means no data of meningitis or 30 days death, changed them to 0
-  # glimpse()
+# glimpse()
 
 
 # Examples on https://github.com/mrc-ide/mcstate/blob/master/inst/sir_incidence.csv
@@ -502,8 +709,8 @@ write.csv(incidence_weekly, "inputs/incidence_weekly.csv", row.names = FALSE)
 
 png("pictures/weekly_cases.png", width = 17, height = 12, unit = "cm", res = 1200)
 col_imD_weekly <- c(counts_Ser1_weekly = "deepskyblue3",
-             counts_meningitis_weekly = "green",
-             counts_30DDeath_weekly = "maroon")
+                    counts_meningitis_weekly = "green",
+                    counts_30DDeath_weekly = "maroon")
 ggplot(Nat_weekly, aes(as.Date(weeks))) +
   geom_line(aes(y = counts_Ser1_weekly, colour = "counts_Ser1_weekly")) +
   geom_line(aes(y = counts_meningitis_weekly, colour = "counts_meningitis_weekly")) +
@@ -543,7 +750,16 @@ dev.off()
 
 ## 3. Serotypes and GPSCs Determination ########################################
 # Load dat_G first.
-link_ID <- readxl::read_excel("raw_data/gubbins/ukhsa_assemblies_02_07_24.xlsx")
+
+# Load MLST result
+mlst_results <- dplyr::bind_rows(
+  read.table("raw_data/gubbins/n739/mlst_results_GPSC31_n739.csv"),
+  read.table("raw_data/gubbins/GPSC2_n7/mlst_results_GPSC2_n7.csv") %>% 
+    dplyr::mutate(V3 = as.character(V3))
+) %>% 
+  dplyr::select(V1, V3) %>% 
+  dplyr::rename(MLST_ST = V3)
+
 
 # Load All Serotype 1: n739 samples of GPSC31 and n7 samples of GPSC2
 all_serotype1 <- dplyr::bind_rows(
@@ -555,15 +771,23 @@ all_serotype1 <- dplyr::bind_rows(
   dplyr::mutate(serotype = 1)
 
 # Load n703 samples of GPSC31; filtered based on N50 >= 30kb
+stats <- read.csv("raw_data/gubbins/sanger_stats_compiled_n746.csv") %>% 
+  dplyr::mutate(V1 = paste0(substr(my_ID, 7, 51), ".fasta")) %>% 
+  dplyr::rename(stats_sumBase = sum,
+                stats_nsumBase = n_sum,
+                stats_N50 = N50) %>% 
+  dplyr::select(V1, stats_sumBase, stats_nsumBase, stats_N50)
+
+
 link_GPSC31_n703 <- read.table("raw_data/gubbins/remove_GPSC31_choosen_n703_list.txt") %>% 
   dplyr::mutate(n703_choosen_GPSC31 = 1)
 
-joined_serotype_GPSC <- link_ID %>% 
+joined_serotype_GPSC <- dat_G %>% 
+  dplyr::full_join(stats, by = c("assembly_name" = "V1")) %>% 
   dplyr::full_join(all_serotype1, by = c("assembly_name" = "V1")) %>% 
+  dplyr::full_join(mlst_results, by = c("assembly_name" = "V1")) %>% 
   dplyr::full_join(link_GPSC31_n703, by = c("assembly_name" = "V1"))
 
-dat_G <- dat_G %>% 
-  dplyr::full_join(joined_serotype_GPSC, by = "ID")
 
 ## 4. AMR Analysis #############################################################
 # Load dat_G first.
@@ -573,7 +797,7 @@ resistance_smx <-
       dplyr::rename(resistance_smx = Resistance),
     read.csv("raw_data/gubbins/GPSC2_n7/resistance_folp_smx.csv") %>% 
       dplyr::rename(resistance_smx = Resistance)
-    )
+  )
 
 resistance_tmp <- 
   dplyr::bind_rows(
@@ -587,13 +811,12 @@ resistance_smx_tmp <-
   dplyr::full_join(resistance_smx, resistance_tmp, by = "isolate_id") %>% 
   dplyr::mutate(isolate_id = paste0(isolate_id, ".fasta"))
 
-dat_G <- dat_G %>% 
+joined_AMR <- joined_serotype_GPSC %>% 
   dplyr::full_join(resistance_smx_tmp, by = c("assembly_name" = "isolate_id")) %>% 
   dplyr::mutate(ngsid = substr(assembly_name, 1, 8)) # correction for ngsid including those that sequenced but have no EpiData
 
 ## 5. Clade Analysis from Microreact ###########################################
 # Load dat_G first.
-
 # Context: Run microreact first and determine some clades.
 clade_assignment_df <-
   dplyr::bind_rows(
@@ -604,10 +827,11 @@ clade_assignment_df <-
   dplyr::mutate(V1 = paste0(V1, ".fasta"))
 
 joined_clades <- 
-  dplyr::full_join(dat_G, clade_assignment_df, by = c("assembly_name" = "V1"))
+  dplyr::full_join(joined_AMR, clade_assignment_df, by = c("assembly_name" = "V1"))
 
 # Clade viz!
 freq_clades <- joined_clades %>%
+  dplyr::filter(n703_choosen_GPSC31 == 1) %>% 
   dplyr::group_by(year) %>%
   dplyr::mutate(Sample_size = n()) %>%
   dplyr::ungroup() %>%
@@ -622,20 +846,25 @@ freq_clades <- joined_clades %>%
   dplyr::select(clade,year,Frequency, Count, Prop, Conf_Int, current.region.name) %>%
   dplyr::distinct()
 
-clades_map <- c("clade1" = "steelblue",
+clades_map <- c("Serotype 1 Case" = "gray75",
+                "clade1" = "steelblue",
                 "clade2" = "darkgreen",
-                "clade3" = "red")
+                "clade3" = "red",
+                # Vaccination
+                "PCV7" = "gray70",
+                "PCV13" = "gray20")
 
 png("pictures/GPSC31_clades.png", width = 17, height = 12, unit = "cm", res = 1200)
 ggplot(freq_clades, aes(x = year, y = Frequency, group = clade,
                         color = clade)) +
   geom_line(size = 1.5) +
-  geom_vline(data = vaccine_UK, aes(xintercept = year),
+  geom_vline(data = vaccine_UK, aes(xintercept = year,
+                                    colour = vaccine),
              linetype = "dashed") +
-  scale_color_manual(values = c(clades_map),
-                        name = "GPSC31 Clades",
-                        breaks = c("clade1", "clade2", "clade3"),
-                        labels = c("Clade 1", "Clade 2", "Clade 3")) +
+  scale_colour_manual(values = c(clades_map),
+                      name = "GPSC31 Clades",
+                      breaks = c("clade1", "clade2", "clade3"),
+                      labels = c("Clade 1", "Clade 2", "Clade 3")) +
   geom_errorbar(aes(ymin = Conf_Int$lower, ymax = Conf_Int$upper),
                 width = .05) +
   geom_label(aes(label = Count),
@@ -644,9 +873,9 @@ ggplot(freq_clades, aes(x = year, y = Frequency, group = clade,
              nudge_y = 0.001,
              nudge_x = 0.05) +
   scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
-  geom_label(aes(x = 2006, y = 0.18, label = "PCV7"),
+  geom_label(aes(x = 2006, y = 0.95, label = "PCV7"),
              fill = "white", color = "black") +
-  geom_label(aes(x = 2011, y = 0.18, label = "PCV13"),
+  geom_label(aes(x = 2011, y = 0.95, label = "PCV13"),
              fill = "white", color = "black") +
   ggtitle("The Frequency of GPSC31 Clades in England") +
   xlab("Year") +
@@ -664,13 +893,14 @@ max_freq_region <- max_freq_region %>%
   dplyr::mutate(current.region.name = case_when(
     year == 2014 ~ "0",
     TRUE ~ current.region.name
-    ))
+  ))
 
 png("pictures/GPSC31_clades_with_maxregion.png", width = 25, height = 12, unit = "cm", res = 1200)
 ggplot(max_freq_region, aes(x = year, y = Frequency, group = clade,
                             color = clade)) +
   geom_line(size = 1.5) +
-  geom_vline(data = vaccine_UK, aes(xintercept = year),
+  geom_vline(data = vaccine_UK, aes(xintercept = year,
+                                    colour = vaccine),
              linetype = "dashed") +
   scale_color_manual(values = c(clades_map),
                      name = "GPSC31 Clades",
@@ -687,23 +917,69 @@ ggplot(max_freq_region, aes(x = year, y = Frequency, group = clade,
              position=position_jitter()) +
   # Mannually add label for 2014 (overlapped data):
   geom_label(label="4 (South West)\n4 (East Midlands)", 
-    x=2014, y=0.0689,
-    label.padding = unit(0.55, "lines"),
-    size = 2.3,
-    color = "black",
-    nudge_y = 0.001,
-    nudge_x = 0.55
+             x=2014, y=0.0689,
+             label.padding = unit(0.55, "lines"),
+             size = 2.3,
+             color = "black",
+             nudge_y = 0.001,
+             nudge_x = 0.55
   ) +
   scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
-  geom_label(aes(x = 2006, y = 0.18, label = "PCV7"),
+  geom_label(aes(x = 2006, y = 0.9, label = "PCV7"),
              fill = "white", color = "black") +
-  geom_label(aes(x = 2011, y = 0.18, label = "PCV13"),
+  geom_label(aes(x = 2011, y = 0.9, label = "PCV13"),
              fill = "white", color = "black") +
   ggtitle("The Frequency of GPSC31 Clades in England") +
   xlab("Year") +
   ylab("Frequency") +
   theme_bw()
 dev.off()
+
+# Clade viz for each region!
+freq_clades_region <- joined_clades %>%
+  dplyr::filter(n703_choosen_GPSC31 == 1) %>% 
+  dplyr::group_by(year, current.region.name) %>%
+  dplyr::mutate(Sample_size = n()) %>%
+  dplyr::ungroup() %>%
+  dplyr::group_by(clade, year, current.region.name) %>%
+  dplyr::mutate(Frequency = n()/Sample_size) %>%
+  dplyr::mutate(Count = n()) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(!is.na(clade),
+                !is.na(year),
+                !is.na(current.region.name)) %>% # Possibly NA in year is 2015
+  # dplyr::mutate(Conf_Int = epitools::binom.exact(Count, Sample_size),
+  #               Prop = Conf_Int$proportion) %>% # per-100,000 population
+  dplyr::select(clade,year,current.region.name,Frequency, Count, Sample_size) %>% #, Conf_Int, current.region.name) %>%
+  dplyr::distinct()
+
+png("pictures/GPSC31_clades_region.png", width = 24, height = 12, unit = "cm", res = 1200)
+ggplot(freq_clades_region, aes(x = year, y = Frequency, group = clade,
+                               color = clade)) +
+  geom_line(size = 1.5) +
+  geom_vline(data = vaccine_UK, aes(xintercept = year,
+                                    colour = vaccine),
+             linetype = "dashed") +
+  scale_colour_manual(values = c(clades_map),
+                      name = "GPSC31 Clades",
+                      breaks = c("clade1", "clade2", "clade3", "PCV7", "PCV13"),
+                      labels = c("Clade 1", "Clade 2", "Clade 3", "PCV7", "PCV13")) +
+  # geom_errorbar(aes(ymin = Conf_Int$lower, ymax = Conf_Int$upper),
+  #               width = .05) +
+  geom_label(aes(label = Count),
+             # fill = "white",
+             color = "black",
+             size = 2,
+             nudge_y = 0.001,
+             nudge_x = 0.05) +
+  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+  facet_wrap(~ current.region.name, scales = "free") +
+  ggtitle("The Frequency of GPSC31 Clades in England") +
+  xlab("Year") +
+  ylab("Frequency") +
+  theme_bw()
+dev.off()
+
 
 ## 6. Data Preparation for Microreact ##########################################
 # Load dat_G first.
@@ -714,13 +990,334 @@ tre_names$ID_contigs <- substr(tre$tip.label, 1, 8)
 tre_names <- 
   dplyr::full_join(tre_names, joined_clades, by = c("ID_contigs" = "ngsid"))
 
+# Write cleaned EpiData plus genomic analysis
+write.csv(joined_clades, "raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_cleaned_joined.csv", row.names = FALSE)
+
 write.csv(tre_names, "raw_data/gubbins/n739/phandango_microreact_check/microreact_tre_names.csv", row.names = FALSE)
 write.csv(tre_names, "raw_data/gubbins/n703/phandango_microreact_check/microreact_tre_names.csv", row.names = FALSE)
 write.csv(tre_names, "raw_data/gubbins/GPSC2_n7/phandango_microreact_check/microreact_tre_names.csv", row.names = FALSE)
 
 
-## 7. Some Stats Analysis Between Clades #######################################
-joined_clades <- read.csv("raw_data/gubbins/n739/phandango_microreact_check/microreact_tre_names.csv")
+## 7. Other Data Viz ###########################################################
+# Basic table for region-ageGroup counts
+joined_clades <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_cleaned_joined.csv")
+
+aggregated_data <- joined_clades %>% 
+  dplyr::mutate(
+    Meningitis = case_when(
+      MeningitisFlag == "Y" ~ 1,
+      MeningitisFlag == "N" ~ 0,
+      TRUE ~ NA_real_ # basically numeric
+    ),
+    Death = case_when(
+      X30daydeath == "D" ~ 1,
+      is.na(X30daydeath) ~ 0
+      # TRUE ~ NA_real_
+    ),
+  ) %>% 
+  dplyr::group_by(Earliest.specimen.date, year, current.region.name, ageGroup7) %>% 
+  dplyr::mutate("Serotype 1 Case" = n()) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(Earliest.specimen.date, year, current.region.name, ageGroup7) %>% 
+  dplyr::mutate("Sequenced" = sum(serotype, na.rm = T)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(Earliest.specimen.date, year, current.region.name, ageGroup7) %>% 
+  dplyr::mutate("Meningitis" = sum(Meningitis, na.rm = T)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(Earliest.specimen.date, year, current.region.name, ageGroup7) %>% 
+  dplyr::mutate("30 Day Death" = sum(Death, na.rm = T)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::select(Earliest.specimen.date, year, current.region.name, ageGroup7,
+                `Serotype 1 Case`, Sequenced, Meningitis, `30 Day Death`) %>% 
+  dplyr::distinct() %>% 
+  dplyr::mutate(Earliest.specimen.date = as.Date(Earliest.specimen.date),
+                weeks = cut(Earliest.specimen.date, breaks="week"))
+
+# Some tables related to sequenced data
+table_region <- aggregated_data %>% 
+  dplyr::group_by(current.region.name) %>% 
+  dplyr::summarise("Serotype 1 Case" = sum(`Serotype 1 Case`),
+                   "Sequenced" = sum(Sequenced), # coz' serotype is 1
+                   "Meningitis" = sum(Meningitis),
+                   "30 Day Death" = sum(`30 Day Death`)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(Freq_sequenced = format((Sequenced/`Serotype 1 Case`*100), digits = 5),
+                "Sequenced Samples" = paste0(Freq_sequenced, "%", " =(", Sequenced, "/", `Serotype 1 Case`, ")")) %>% 
+  dplyr::select(current.region.name, `Sequenced Samples`) %>% 
+  view()
+
+table_ageGroup <- aggregated_data %>% 
+  dplyr::group_by(ageGroup7) %>% 
+  dplyr::summarise("Serotype 1 Case" = sum(`Serotype 1 Case`),
+                   "Sequenced" = sum(Sequenced), # coz' serotype is 1
+                   "Meningitis" = sum(Meningitis),
+                   "30 Day Death" = sum(`30 Day Death`)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(Freq_sequenced = format((Sequenced/`Serotype 1 Case`*100), digits = 5),
+                "Sequenced Samples" = paste0(Freq_sequenced, "%", " =(", Sequenced, "/", `Serotype 1 Case`, ")")) %>% 
+  dplyr::select(ageGroup7, `Sequenced Samples`) %>% 
+  view()
+
+
+cases_year <- aggregated_data %>% 
+  dplyr::group_by(year) %>% 
+  dplyr::summarise("Serotype 1 Case" = sum(`Serotype 1 Case`),
+                   "Sequenced" = sum(Sequenced), # coz' serotype is 1
+                   "Meningitis" = sum(Meningitis),
+                   "30 Day Death" = sum(`30 Day Death`)) %>% 
+  dplyr::ungroup() %>% 
+  reshape2::melt(id.vars = c("year"),
+                 measure.vars = c("Serotype 1 Case", "Sequenced", "Meningitis", "30 Day Death"))
+
+png("pictures/counts_allages_withSeq.png", width = 17, height = 12, unit = "cm", res = 1200)
+ggplot(cases_year, aes(x = year, y = value, group = variable,
+                       color = variable)) +
+  geom_line(size = 1.5) +
+  geom_vline(data = vaccine_UK, aes(xintercept = year),
+             linetype = "dashed") +
+  scale_color_manual(values = c(col_map),
+                     name = "Cases",
+                     breaks = c("Serotype 1 Case", "Sequenced", "Meningitis", "30 Day Death"),
+                     labels = c("Serotype 1 Cases", "Sequenced", "Meningitis", "30 Day Death")
+  ) +
+  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+  geom_label(aes(x = 2006, y = 150, label = "PCV7"),
+             fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+  geom_label(aes(x = 2011, y = 150, label = "PCV13"),
+             fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+  ggtitle("The Counts of Serotype 1 in England") +
+  xlab("Year") +
+  ylab("Serotype 1 Cases") +
+  theme_bw()
+dev.off()
+
+cases_weeks <- aggregated_data %>% 
+  dplyr::group_by(weeks) %>% 
+  dplyr::summarise("Serotype 1 Case" = sum(`Serotype 1 Case`),
+                   "Sequenced" = sum(Sequenced), # coz' serotype is 1
+                   "Meningitis" = sum(Meningitis),
+                   "30 Day Death" = sum(`30 Day Death`)) %>% 
+  dplyr::ungroup() %>% 
+  reshape2::melt(id.vars = c("weeks"),
+                 measure.vars = c("Serotype 1 Case", "Sequenced", "Meningitis", "30 Day Death")) %>% 
+  dplyr::filter(variable != "Meningitis" & variable != "30 Day Death")
+
+png("pictures/counts_allages_withSeq_weeks.png", width = 17, height = 12, unit = "cm", res = 1200)
+ggplot(cases_weeks, aes(x = as.Date(weeks), y = value, group = variable,
+                        color = variable)) +
+  geom_line(size = 0.75) +
+  geom_vline(data = vaccine_UK, aes(xintercept = as.Date(c("2006-09-04", "2010-10-01"))),
+             linetype = "dashed") +
+  scale_color_manual(values = c(col_map),
+                     name = "Cases",
+                     breaks = c("Serotype 1 Case", "Sequenced", "Meningitis", "30 Day Death"),
+                     labels = c("Serotype 1 Cases", "Sequenced", "Meningitis", "30 Day Death")
+  ) +
+  # scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+  geom_label(aes(x = as.Date("2006-09-04"), y = 41, label = "PCV7"),
+             fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+  geom_label(aes(x = as.Date("2010-10-01"), y = 41, label = "PCV13"),
+             fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+  ggtitle("Serotype 1 Cases in England (Aggregated by Week)") +
+  xlab("Time") +
+  ylab("Serotype 1 Cases") +
+  theme_bw()
+dev.off()
+
+# I'm just being curious...
+aggregated_clades <- joined_clades %>% 
+  dplyr::mutate(
+    Clade1 = case_when(
+      clade == "clade1" ~ 1,
+      clade == "clade2" ~ 0,
+      clade == "clade3" ~ 0,
+      TRUE ~ NA_real_ # basically numeric
+    ),
+    Clade2 = case_when(
+      clade == "clade1" ~ 0,
+      clade == "clade2" ~ 1,
+      clade == "clade3" ~ 0,
+      TRUE ~ NA_real_ # basically numeric
+    ),
+    Clade3 = case_when(
+      clade == "clade1" ~ 0,
+      clade == "clade2" ~ 0,
+      clade == "clade3" ~ 1,
+      TRUE ~ NA_real_ # basically numeric
+    )) %>% 
+  dplyr::group_by(Earliest.specimen.date, year, current.region.name, ageGroup7) %>% 
+  dplyr::mutate("Serotype 1 Case" = n()) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(Earliest.specimen.date, year, current.region.name, ageGroup7) %>% 
+  dplyr::mutate(clade1 = sum(Clade1, na.rm = T)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(Earliest.specimen.date, year, current.region.name, ageGroup7) %>% 
+  dplyr::mutate(clade2 = sum(Clade2, na.rm = T)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(Earliest.specimen.date, year, current.region.name, ageGroup7) %>% 
+  dplyr::mutate(clade3 = sum(Clade3, na.rm = T)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::select(Earliest.specimen.date, year, current.region.name, ageGroup7,
+                `Serotype 1 Case`, clade1, clade2, clade3) %>% 
+  dplyr::distinct() %>% 
+  dplyr::mutate(Earliest.specimen.date = as.Date(Earliest.specimen.date),
+                weeks = cut(Earliest.specimen.date, breaks="week"),
+                months = cut(Earliest.specimen.date, breaks="month"))
+
+
+clades_year <- aggregated_clades %>% 
+  dplyr::group_by(year) %>% 
+  dplyr::summarise("Serotype 1 Case" = sum(`Serotype 1 Case`),
+                   clade1 = sum(clade1), # coz' serotype is 1
+                   clade2 = sum(clade2),
+                   clade3 = sum(clade3)) %>% 
+  dplyr::ungroup() %>% 
+  reshape2::melt(id.vars = c("year"),
+                 measure.vars = c("Serotype 1 Case", "clade1", "clade2", "clade3"))
+
+png("pictures/counts_allages_withSeq_clades.png", width = 17, height = 12, unit = "cm", res = 1200)
+ggplot(clades_year, aes(x = year, y = value, group = variable,
+                        color = variable)) +
+  geom_line(size = 1.5) +
+  geom_vline(data = vaccine_UK, aes(xintercept = year),
+             linetype = "dashed") +
+  scale_color_manual(values = c(clades_map),
+                     name = "Cases (GPSC31)",
+                     breaks = c("Serotype 1 Case", "clade1", "clade2", "clade3"),
+                     labels = c("Serotype 1 Cases", "Clade 1", "Clade 2", "Clade 3")
+  ) +
+  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+  geom_label(aes(x = 2006, y = 150, label = "PCV7"),
+             fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+  geom_label(aes(x = 2011, y = 150, label = "PCV13"),
+             fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+  ggtitle("The Counts of Serotype 1 in England") +
+  xlab("Year") +
+  ylab("Serotype 1 Cases") +
+  theme_bw()
+dev.off()
+
+
+clades_months <- aggregated_clades %>% 
+  dplyr::group_by(months) %>% 
+  dplyr::summarise("Serotype 1 Case" = sum(`Serotype 1 Case`),
+                   clade1 = sum(clade1), # coz' serotype is 1
+                   clade2 = sum(clade2),
+                   clade3 = sum(clade3)) %>% 
+  dplyr::ungroup() %>% 
+  reshape2::melt(id.vars = c("months"),
+                 measure.vars = c("Serotype 1 Case", "clade1", "clade2", "clade3"))
+
+png("pictures/counts_allages_withSeq_months_clades.png", width = 17, height = 12, unit = "cm", res = 1200)
+ggplot(clades_months, aes(x = as.Date(months), y = value, group = variable,
+                          color = variable)) +
+  geom_line(size = 0.75) +
+  geom_vline(data = vaccine_UK, aes(xintercept = as.Date(c("2006-09-04", "2010-10-01"))),
+             linetype = "dashed") +
+  scale_color_manual(values = c(clades_map),
+                     name = "Cases (GPSC31)",
+                     breaks = c("Serotype 1 Case", "clade1", "clade2", "clade3"),
+                     labels = c("Serotype 1 Cases", "Clade 1", "Clade 2", "Clade 3")
+  ) +
+  # scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+  geom_label(aes(x = as.Date("2006-09-04"), y = 90, label = "PCV7"),
+             fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+  geom_label(aes(x = as.Date("2010-10-01"), y = 90, label = "PCV13"),
+             fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+  ggtitle("Serotype 1 Cases in England (Aggregated by Month)") +
+  xlab("Time") +
+  ylab("Serotype 1 Cases") +
+  theme_bw()
+dev.off()
+
+
+clades_weeks <- aggregated_clades %>% 
+  dplyr::group_by(weeks) %>% 
+  dplyr::summarise("Serotype 1 Case" = sum(`Serotype 1 Case`),
+                   clade1 = sum(clade1), # coz' serotype is 1
+                   clade2 = sum(clade2),
+                   clade3 = sum(clade3)) %>% 
+  dplyr::ungroup() %>% 
+  reshape2::melt(id.vars = c("weeks"),
+                 measure.vars = c("Serotype 1 Case", "clade1", "clade2", "clade3"))
+
+png("pictures/counts_allages_withSeq_weeks_clades.png", width = 17, height = 12, unit = "cm", res = 1200)
+ggplot(clades_weeks, aes(x = as.Date(weeks), y = value, group = variable,
+                         color = variable)) +
+  geom_line(size = 0.75) +
+  geom_vline(data = vaccine_UK, aes(xintercept = as.Date(c("2006-09-04", "2010-10-01"))),
+             linetype = "dashed") +
+  scale_color_manual(values = c(clades_map),
+                     name = "Cases (GPSC31)",
+                     breaks = c("Serotype 1 Case", "clade1", "clade2", "clade3"),
+                     labels = c("Serotype 1 Cases", "Clade 1", "Clade 2", "Clade 3")
+  ) +
+  # scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+  geom_label(aes(x = as.Date("2006-09-04"), y = 41, label = "PCV7"),
+             fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+  geom_label(aes(x = as.Date("2010-10-01"), y = 41, label = "PCV13"),
+             fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+  ggtitle("Serotype 1 Cases in England (Aggregated by Week)") +
+  xlab("Time") +
+  ylab("Serotype 1 Cases") +
+  theme_bw()
+dev.off()
+
+
+## 8. Some Stats Analysis ######################################################
+joined_clades <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_cleaned_joined.csv")
+# Meningitis-death odd ratio for all data
+# (Death+ & Meningitis+)
+all_Dm <- joined_clades %>% 
+  filter(MeningitisFlag == "Y" & !is.na(X30daydeath)) %>% # not NA equals to "D"
+  nrow()
+
+# (Death+ & Meningitis-)
+all_Dmmin <- joined_clades %>% 
+  filter(MeningitisFlag == "N" & !is.na(X30daydeath)) %>% # not NA equals to "D"
+  nrow()
+
+# (Death- & Meningitis+)
+all_Dminm <- joined_clades %>% 
+  filter(MeningitisFlag == "Y" & is.na(X30daydeath)) %>% 
+  nrow()
+
+# (Death- & Meningitis-)
+all_Dminmmin <- joined_clades %>% 
+  filter(MeningitisFlag == "N" & is.na(X30daydeath)) %>% 
+  nrow()
+
+# Matrix (D+M+, D-M+, D+M-, D-M-)
+Outcome <- c("Death", "Alive")
+Meningitis <- c("Meningitis", "Not Meningitis")
+
+
+Input_mD <- matrix(c(all_Dm, all_Dminm,
+                     all_Dmmin, all_Dminmmin),
+                   nrow = 2, ncol = 2, byrow = T)
+dimnames(Input_mD) <- list('Meningitis'=Meningitis, 'Outcome'=Outcome)
+
+All_OD <- epitools::oddsratio(Input_mD)
+All_OD
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # GPSCs vs. regions 
 chisq.test(table(joined_clades$current.region.name, joined_clades$GPSC))
@@ -730,11 +1327,13 @@ chisq.test(table(joined_clades$current.region.name, joined_clades$GPSC))
 # GPSC31 Clade vs. regions 
 chi_region <- chisq.test(table(joined_clades$current.region.name, joined_clades$clade))
 print(chi_region)
+prop.table(chi_region)
 # data:  table(joined_clades$current.region.name, joined_clades$clade)
 # X-squared = 48.53, df = 16, p-value = 3.92e-05
 # Post-hoc
 std_resid_region <- chi_region$stdres
 print(std_resid_region)
+
 # Whether a mosaic plot is the best way to viz the distribution of clades (not related to year)
 mosaicplot(table(joined_clades$current.region.name, joined_clades$clade),
            main = "Mosaic Plot of Region and GPSC31 Clades", shade = TRUE, legend = TRUE)
@@ -760,12 +1359,15 @@ clades_combined <- merge(filtered_NA_counts, pop_year,
 png("pictures/GPSC31_counts_by_region.png", width = 25, height = 17, unit = "cm", res = 1200)
 ggplot(filtered_NA_counts, aes(x = year, y = count, colour = clade)) +
   geom_line(size = 1.5) +
+  geom_vline(data = vaccine_UK, aes(xintercept = year,
+                                    colour = vaccine),
+             linetype = "dashed") +
   scale_color_manual(values = c(clades_map),
                      name = "GPSC31 Clades",
-                     breaks = c("clade1", "clade2", "clade3"),
-                     labels = c("Clade 1", "Clade 2", "Clade 3")) +
-  annotate("segment", x = 2006, xend = 2006, y = -Inf, yend = Inf, linetype = "dashed") +
-  annotate("segment", x = 2011, xend = 2011, y = -Inf, yend = Inf, linetype = "dashed") +
+                     breaks = c("clade1", "clade2", "clade3", "PCV7", "PCV13"),
+                     labels = c("Clade 1", "Clade 2", "Clade 3", "PCV7", "PCV13")) +
+  # annotate("segment", x = 2006, xend = 2006, y = -Inf, yend = Inf, linetype = "dashed") +
+  # annotate("segment", x = 2011, xend = 2011, y = -Inf, yend = Inf, linetype = "dashed") +
   scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
   facet_wrap(~ current.region.name, scales = "free") +
   labs(title = "Count of GPSC31 Clades by Region",
@@ -782,12 +1384,15 @@ ggplot(clades_combined, aes(x = year, y = incid_clades_year*100000, colour = cla
   # Epitools takes long time to compile!
   # geom_errorbar(aes(ymin = Conf_Int$lower*100000, ymax = Conf_Int$upper*100000), # It doesn't matter whether I add the CI or not because the Pop data is quite huge, I suppose (?)
   #               width = .1) +
+  geom_vline(data = vaccine_UK, aes(xintercept = year,
+                                    colour = vaccine),
+             linetype = "dashed") +
   scale_color_manual(values = c(clades_map),
                      name = "GPSC31 Clades",
-                     breaks = c("clade1", "clade2", "clade3"),
-                     labels = c("Clade 1", "Clade 2", "Clade 3")) +
-  annotate("segment", x = 2006, xend = 2006, y = -Inf, yend = Inf, linetype = "dashed") +
-  annotate("segment", x = 2011, xend = 2011, y = -Inf, yend = Inf, linetype = "dashed") +
+                     breaks = c("clade1", "clade2", "clade3", "PCV7", "PCV13"),
+                     labels = c("Clade 1", "Clade 2", "Clade 3", "PCV7", "PCV13")) +
+  # annotate("segment", x = 2006, xend = 2006, y = -Inf, yend = Inf, linetype = "dashed") +
+  # annotate("segment", x = 2011, xend = 2011, y = -Inf, yend = Inf, linetype = "dashed") +
   scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
   facet_wrap(~ current.region.name, scales = "free") +
   labs(title = "The Frequency of GPSC31 per Year in England \nby Regions (per 100,000)",
@@ -826,12 +1431,15 @@ ggplot(clades_combined_region, aes(x = year, y = incid_clades_year_reg*100000, c
   # Epitools take long time to compile!
   # geom_errorbar(aes(ymin = Conf_Int$lower*100000, ymax = Conf_Int$upper*100000), # It doesn't matter whether I add the CI or not because the Pop data is quite huge, I suppose (?)
   #               width = .1) +
+  geom_vline(data = vaccine_UK, aes(xintercept = year,
+                                    colour = vaccine),
+             linetype = "dashed") +
   scale_color_manual(values = c(clades_map),
                      name = "GPSC31 Clades",
-                     breaks = c("clade1", "clade2", "clade3"),
-                     labels = c("Clade 1", "Clade 2", "Clade 3")) +
-  annotate("segment", x = 2006, xend = 2006, y = -Inf, yend = Inf, linetype = "dashed") +
-  annotate("segment", x = 2011, xend = 2011, y = -Inf, yend = Inf, linetype = "dashed") +
+                     breaks = c("clade1", "clade2", "clade3", "PCV7", "PCV13"),
+                     labels = c("Clade 1", "Clade 2", "Clade 3", "PCV7", "PCV13")) +
+  # annotate("segment", x = 2006, xend = 2006, y = -Inf, yend = Inf, linetype = "dashed") +
+  # annotate("segment", x = 2011, xend = 2011, y = -Inf, yend = Inf, linetype = "dashed") +
   scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
   facet_wrap(~ current.region.name, scales = "free") +
   labs(title = "The Frequency of GPSC31 in England \nby Regions (per 100,000)",
@@ -842,6 +1450,14 @@ ggplot(clades_combined_region, aes(x = year, y = incid_clades_year_reg*100000, c
 dev.off()
 
 # GPSCs vs. vaccination era
+joined_clades$year <- as.factor(joined_clades$year)
+
+anova_year_GPSCs <- aov(year ~ GPSC, data = joined_clades)
+summary(anova_year_GPSCs)
+# Post-Hoc
+TukeyHSD(anova_year_GPSCs)
+
+
 chi_vacc_GPSCs <- chisq.test(table(joined_clades$vacc, joined_clades$GPSC))
 
 # Post-hoc
@@ -861,8 +1477,8 @@ mosaicplot(table(joined_clades$vacc, joined_clades$clade),
 
 # Other non-statistically significant results: #################################
 # GPSCs vs. ages
-anova_GPSCs <- aov(ageLabel ~ GPSC, data = joined_clades)
-summary(anova_GPSCs)
+anova_ages_GPSCs <- aov(ageLabel ~ GPSC, data = joined_clades)
+summary(anova_ages_GPSCs)
 # > summary(anova_GPSCs)
 # Df Sum Sq Mean Sq F value Pr(>F)
 # GPSC          1     57    57.0   0.097  0.755
