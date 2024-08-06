@@ -69,6 +69,14 @@ mu_1 <- 192/(4064*4745) # FIXED disease-associated mortality; ratio 192/4064 in 
 # beta_temporary <- beta_0*((1+beta_1*cos(2*pi*((time_shift_1*365)+time)/365)) + (1+beta_2*sin(2*pi*((time_shift_2*365)+time)/365)))
 beta_temporary <- pars$beta_0*((1+pars$beta_1*cos(2*pi*((pars$time_shift_1*365)+time)/365)) + (1+pars$beta_2*sin(2*pi*((pars$time_shift_2*365)+time)/365)))
 beta <- ifelse(time >= 2648, beta_temporary*(1-(0.9*0.862*0.02)), beta_temporary)
+
+beta_temporary_lo_CI <- pars_lo_CI$beta_0*((1+pars_lo_CI$beta_1*cos(2*pi*((pars_lo_CI$time_shift_1*365)+time)/365)) + (1+pars_lo_CI$beta_2*sin(2*pi*((pars_lo_CI$time_shift_2*365)+time)/365)))
+beta_temporary_hi_CI <- pars_hi_CI$beta_0*((1+pars_hi_CI$beta_1*cos(2*pi*((pars_hi_CI$time_shift_1*365)+time)/365)) + (1+pars_hi_CI$beta_2*sin(2*pi*((pars_hi_CI$time_shift_2*365)+time)/365)))
+
+beta_lo_CI <- ifelse(time >= 2648, beta_temporary_lo_CI*(1-(0.9*0.862*0.02)), beta_temporary_lo_CI)
+beta_hi_CI <- ifelse(time >= 2648, beta_temporary_hi_CI*(1-(0.9*0.862*0.02)), beta_temporary_hi_CI)
+
+
 print(c(max(beta), max(beta_temporary))) # beta_temporary simulated with no infant vaccination
 print(c(min(beta), min(beta_temporary)))
 
@@ -76,8 +84,94 @@ print(c(min(beta), min(beta_temporary)))
 R0_no_vacc <- beta_temporary/((mu_0+(10^(pars$log_delta))+pars$sigma_1)*((pars$sigma_2)+(mu_0+mu_1)))
 R0_vacc <- beta/((mu_0+(10^(pars$log_delta))+pars$sigma_1)*((pars$sigma_2)+(mu_0+mu_1)))
 
-plot(time, R0_no_vacc)
-plot(time, R0_vacc)
+R0_no_vacc_lo_CI <- beta_temporary_lo_CI/((mu_0+(10^(pars_lo_CI$log_delta))+pars$sigma_1)*((pars$sigma_2)+(mu_0+mu_1)))
+R0_no_vacc_hi_CI <- beta_temporary_hi_CI/((mu_0+(10^(pars_hi_CI$log_delta))+pars$sigma_1)*((pars$sigma_2)+(mu_0+mu_1)))
+
+R0_vacc_lo_CI <- beta_lo_CI/((mu_0+(10^(pars_lo_CI$log_delta))+pars$sigma_1)*((pars$sigma_2)+(mu_0+mu_1)))
+R0_vacc_hi_CI <- beta_hi_CI/((mu_0+(10^(pars_hi_CI$log_delta))+pars$sigma_1)*((pars$sigma_2)+(mu_0+mu_1)))
+
+# save beta & R0 simulation
+beta_R0_df <- data.frame(
+  time = time,
+  beta_temporary = beta_temporary,
+  beta_temporary_hi_CI = beta_temporary_hi_CI,
+  beta_temporary_lo_CI = beta_temporary_lo_CI,
+  beta = beta,
+  beta_hi_CI = beta_hi_CI,
+  beta_lo_CI = beta_lo_CI,
+  #
+  R0_no_vacc = R0_no_vacc,
+  R0_no_vacc_hi_CI = R0_no_vacc_hi_CI,
+  R0_no_vacc_lo_CI = R0_no_vacc_lo_CI,
+  R0_vacc = R0_vacc,
+  R0_vacc_hi_CI = R0_vacc_hi_CI,
+  R0_vacc_lo_CI = R0_vacc_lo_CI
+) %>% 
+  dplyr::mutate(
+    date = as.Date("2003-01-01") + days(time - 1),
+                weekly = ceiling(time/7),
+                vacc = case_when(
+                  time < 2648 ~ "Pre-PCV13",
+                  time >= 2648 ~ "PCV13",
+                  TRUE ~ NA_character_
+                ))
+
+# Selected df for R0 only
+R0_only <- beta_R0_df %>% 
+  dplyr::select(time, date, weekly, R0_vacc, R0_vacc_hi_CI, R0_vacc_lo_CI, vacc) %>% 
+  dplyr::group_by(weekly) %>%
+  dplyr::summarise(R0_vacc = mean(R0_vacc),
+                   R0_vacc_hi_CI = mean(R0_vacc_hi_CI),
+                   R0_vacc_lo_CI = mean(R0_vacc_lo_CI)) %>%
+  dplyr::ungroup() %>%
+  # reshape2::melt(id.vars = c("weekly"),
+  #                measure.vars = c("R0", "R0_hi_CI", "R0_lo_CI")) %>% 
+  dplyr::mutate(date = as.Date("2003-01-01") + days((weekly-1)*7),) %>%
+  glimpse()
+
+png("pictures/R0_weekly_simulated4745times4.png", width = 24, height = 12, unit = "cm", res = 1200)
+ggplot(R0_only %>% dplyr::filter(date <= "2004-12-31"), aes(x = date, y = R0_vacc,
+                                      # group = variable,
+                                      # colour = variable
+                                      )) +
+  geom_ribbon(aes(ymin = R0_vacc_lo_CI, ymax = R0_vacc_hi_CI), fill = "steelblue", alpha = 0.2) +
+  geom_line() + 
+  # geom_vline(data = vaccine_UK, aes(xintercept = as.Date(vaccine_UK$date),
+  #                                   colour = vaccine),
+  #            linetype = "dashed") +
+  scale_color_manual(values = c(col_compartment),
+                     name = "States",
+                     breaks = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Data_dis", "PCV7", "PCV13"),
+                     labels = c("Susceptible", "Asymptomatic", "Diseased", "Recovered", "Diseased Data", "PCV7", "PCV13")
+  ) +
+  scale_x_date(date_breaks = "1 month",
+  date_labels = "%m") +
+  xlim(as.Date(c('1/1/2003', '12/12/2004'), format="%m%Y")) +
+  ggtitle("Simulation Model for Serotype 1 Cases (Aggregated by Days)") +
+  ggtitle("Serotype 1 Cases (Aggregated by Weeks)") +
+  xlab("Time (in Week)") +
+  ylab("R0") +
+  theme_bw()
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+plot(time, beta_temporary, type = "l")
+plot(time, beta, type = "l")
+
+plot(time, R0_no_vacc, type = "l")
+lines(time, R0_vacc, col = "steelblue")
 
 
 

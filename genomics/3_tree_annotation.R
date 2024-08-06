@@ -800,6 +800,135 @@ gfacet_blast_m
 dev.off()
 
 
+# competence genes plot ########################################################
+# recall ggtree_clade but with square tree
+gg_31 <- ggtree_clade + layout_rectangular() #+ 
+  # theme(legend.position=c(.05, .7))
+
+# comCDE
+comcde_genes.df <-
+  data.frame(
+    "start" = c(1,750,2096),
+    "end" = c(753,2075,2221),
+    "strand" = c(-1,-1,-1),
+    "name" = c("comE","comD","comC"),
+    "genome" = "gpsc31"
+  )
+
+comCDE_plot <-
+  ggplot(comcde_genes.df,
+         aes(xmin = start,
+             xmax = end,
+             y = genome,
+             forward = strand,
+             label = name)) +
+  geom_gene_arrow(fill = "steelblue") + 
+  geom_gene_label(align = "centre",
+                  colour = "white") +
+  ylab("") +
+  #theme_genes() +
+  #theme(axis.text.y=element_blank())
+  xlim(c(1,2221)) +
+  theme_void()
+
+comCDE_lower <-
+  cowplot::plot_grid(plotlist = list(NULL,comCDE_plot))
+
+comcde.df <- tre_names %>%
+  dplyr::select(ID, MLST_ST, clade, contains("com")) %>% 
+  dplyr::rename(Start = qstart_blast_comCDE,
+                End = qend_blast_comCDE) %>% 
+  dplyr::mutate(Length = End - Start + 1)
+
+# expression(''~italic(comCDE)~'') comCDE failed to be italicized
+gpsc31_comCDE <-
+  gg_31 + geom_facet(panel = "comCDE", data = comcde.df, geom = geom_errorbarh, 
+                     mapping=aes(x = Start, xmin = Start, xmax = End, colour = Length)) +
+  # theme(strip.text = element_text(face = "italic")) +
+  xlim_expand(c(1,2221), "comCDE") +
+  theme_void() +
+  theme(legend.position = "top")
+
+png("pictures/genomics/BLAST_genome_length_comCDE.png", width = 24, height = 12, unit = "cm", res = 1200)
+gpsc31_comCDE_analysis <-
+  cowplot::plot_grid(plotlist = list(gpsc31_comCDE,comCDE_lower),
+                     ncol = 1,
+                     rel_heights = c(0.95,0.05))
+gpsc31_comCDE_analysis
+dev.off()
+
+
+# coiA
+coiA_genes.df <-
+  data.frame(
+    "start" = c(1),
+    "end" = c(954),
+    "strand" = c(-1),
+    "name" = c("coiA"),
+    "genome" = "gpsc31"
+  )
+
+coiA_plot <-
+  ggplot(coiA_genes.df,
+         aes(xmin = start,
+             xmax = end,
+             y = genome,
+             forward = strand,
+             label = name)) +
+  geom_gene_arrow(fill = "steelblue") + 
+  geom_gene_label(align = "centre",
+                  colour = "white") +
+  ylab("") +
+  #theme_genes() +
+  #theme(axis.text.y=element_blank())
+  xlim(c(1,954)) +
+  theme_void()
+
+coiA_lower <-
+  cowplot::plot_grid(plotlist = list(NULL,coiA_plot))
+
+coia.df <- tre_names %>%
+  dplyr::select(ID, MLST_ST, clade, contains("coiA")) %>% 
+  dplyr::rename(Start = qstart_blast_coiA,
+                End = qend_blast_coiA) %>% 
+  dplyr::mutate(Length = End - Start + 1)
+
+# expression(''~italic(coia)~'') coia failed to be italicized
+gpsc31_coiA <-
+  gg_31 + geom_facet(panel = "coiA", data = coia.df, geom = geom_errorbarh, 
+                     mapping=aes(x = Start, xmin = Start, xmax = End, colour = Length)) +
+  # theme(strip.text = element_text(face = "italic")) +
+  xlim_expand(c(1,954), "coiA") +
+  theme_void() +
+  theme(legend.position = "top")
+
+png("pictures/genomics/BLAST_genome_length_coiA.png", width = 24, height = 12, unit = "cm", res = 1200)
+gpsc31_coiA_analysis <-
+  cowplot::plot_grid(plotlist = list(gpsc31_coiA,coiA_lower),
+                     ncol = 1,
+                     rel_heights = c(0.95,0.05))
+gpsc31_coiA_analysis
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
