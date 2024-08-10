@@ -272,6 +272,9 @@ representative_clades <- combined_data %>%
 # tre_gubbins <- BactDating::loadGubbins("raw_data/gubbins/n703/n703_") # gubbins output
 tre_BD <- read_rds("outputs/genomics/choosen_n703/method_strictgamma_1e6/mcmc_bacdating.rds") # BactDating output
 
+# Only save bactdating tree:
+ape::write.tree(tre_BD$tree, "outputs/genomics/choosen_n703/method_strictgamma_1e6/mcmc_bacdating_onlytree.tre")
+
 # calculate branch point
 branchp <- as.data.frame(tre_BD$CI) %>% 
   dplyr::mutate(branchp = (V1+V2)/2) %>% 
