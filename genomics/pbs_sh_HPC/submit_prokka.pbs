@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#PBS -l walltime=72:00:00
+#PBS -l select=1:ncpus=8:mem=64gb
+
+# Job sizing guidance:imperial college's Intro to HPC OR
+# https://www.imperial.ac.uk/computational-methods/hpc/
+# https://github.com/tseemann/prokka/issues/187
+
+source ~/anaconda3/etc/profile.d/conda.sh
+
+cd $PBS_O_WORKDIR
+
+while IFS=$'\t' read -r basename fasta_file; do
+    # I compile all of the results in 1 folder
+    conda run -n prokka_Env prokka --locustag "$basename" --outdir "outputs_prokka/$basename" --prefix "$basename" "$fasta_file"
+done < AllTarget_isolates.list

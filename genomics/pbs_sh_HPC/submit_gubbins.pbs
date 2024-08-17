@@ -1,0 +1,16 @@
+ #!/bin/bash
+
+#PBS -l walltime=72:00:00
+#PBS -l select=1:ncpus=8:mem=64gb
+
+# Job sizing guidance:imperial college's Intro to HPC OR
+# https://www.imperial.ac.uk/computational-methods/hpc/
+source ~/anaconda3/etc/profile.d/conda.sh
+
+cd $PBS_O_WORKDIR
+#mkdir /trialFolder # Failed
+conda run -n gubbinsTRIAL run_gubbins.py --prefix n703_ GPSC31_n703.aln > myresult.txt
+#mv *.pdf myresult.txt $PBS_O_WORKDIR
+
+printenv > myenv.txt
+#mv myenv.txt $PBS_O_WORKDIR

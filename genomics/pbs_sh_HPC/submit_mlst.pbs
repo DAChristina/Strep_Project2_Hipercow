@@ -1,0 +1,16 @@
+#!/bin/bash
+
+#PBS -l walltime=72:00:00
+#PBS -l select=1:ncpus=8:mem=64gb
+
+# Job sizing guidance:imperial college's Intro to HPC OR
+# https://www.imperial.ac.uk/computational-methods/hpc/
+source ~/anaconda3/etc/profile.d/conda.sh
+
+cd $PBS_O_WORKDIR
+
+for f in $(cat AllTarget_isolates.txt); do
+    conda run -n blast_env mlst "$f" >> mlst_results.csv;
+done
+# Because I am a moron by adding ">" instead of ">>"
+printenv > mlst_env.txt

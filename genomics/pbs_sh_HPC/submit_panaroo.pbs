@@ -1,0 +1,15 @@
+#!/bin/bash
+
+#PBS -l walltime=72:00:00
+#PBS -l select=1:ncpus=8:mem=64gb
+
+# Job sizing guidance:imperial college's Intro to HPC OR
+# https://www.imperial.ac.uk/computational-methods/hpc/
+source ~/anaconda3/etc/profile.d/conda.sh
+
+cd $PBS_O_WORKDIR
+
+conda run -n panaroo_Env panaroo -i *.gff -o outputs_panaroo --clean-mode strict > myresult.txt
+# I remove option --remove-invalid-genes
+printenv > myenv.txt
+
