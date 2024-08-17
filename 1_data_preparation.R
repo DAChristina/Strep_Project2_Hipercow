@@ -242,6 +242,46 @@ ggplot(all_combined, aes(x = year, y = Conf_Int$proportion*100000)) +
   theme_bw()
 dev.off()
 
+png("pictures/combined_allages.png", width = 28, height = 10, unit = "cm", res = 1200)
+England_allYear <-
+  cowplot::plot_grid(plotlist = list(ggplot(all_year, aes(x = year, y = counts)) +
+                                       geom_line(size = 1.5) +
+                                       geom_vline(data = vaccine_UK, aes(xintercept = year),
+                                                  linetype = "dashed") +
+                                       # scale_color_manual(values = "black"
+                                       # ) +
+                                       scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+                                       geom_label(aes(x = 2006, y = 150, label = "PCV7"),
+                                                  fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+                                       geom_label(aes(x = 2011, y = 150, label = "PCV13"),
+                                                  fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+                                       ggtitle("Case Counts of IPD Caused by Serotype 1\nin England") +
+                                       xlab("Year") +
+                                       ylab("Serotype 1 Cases") +
+                                       theme_bw(),
+                                     ggplot(all_combined, aes(x = year, y = Conf_Int$proportion*100000)) +
+                                       geom_line(size = 1.5) +
+                                       geom_errorbar(aes(ymin = Conf_Int$lower*100000, ymax = Conf_Int$upper*100000), # It doesn't matter whether I add the CI or not because the Pop data is quite huge, I suppose (?)
+                                                     width = .1) +
+                                       geom_vline(data = vaccine_UK, aes(xintercept = year),
+                                                  linetype = "dashed") +
+                                       scale_color_manual(values = "black"
+                                       ) +
+                                       scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+                                       scale_linetype_manual(values = c(vacc_map),
+                                                             name = "Vaccine",
+                                                             labels = c("PCV7", "PCV13")) +
+                                       geom_label(aes(x = 2006, y = 0.15, label = "PCV7"),
+                                                  fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+                                       geom_label(aes(x = 2011, y = 0.15, label = "PCV13"),
+                                                  fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+                                       ggtitle("Incidence of IPD Caused by Serotype 1\nin England (per 100,000 population)") +
+                                       xlab("Year") +
+                                       ylab("Serotype 1 Incidence") +
+                                       theme_bw()))
+
+England_allYear
+dev.off()
 
 # CI calculations for children-adults
 ageGroup2 <- dat_G %>% 
@@ -466,6 +506,86 @@ ggplot(all_ageGroup7, aes(x = year, y = Conf_Int$proportion*100000, group = ageG
   theme_bw()
 dev.off()
 
+png("pictures/combined_7ageGroups.png", width = 28, height = 10, unit = "cm", res = 1200)
+England_7ageGroups <-
+  cowplot::plot_grid(plotlist = list(ggplot(all_ageGroup7, aes(x = year, y = counts, group = ageGroup7,
+                                                               color = ageGroup7)) +
+                                       geom_line(size = 1.5) +
+                                       geom_vline(data = vaccine_UK, aes(xintercept = year,
+                                                                         colour = vaccine),
+                                                  linetype = "dashed") +
+                                       scale_color_manual(values = c(col_map),
+                                                          name = "Demographic",
+                                                          breaks = c("<2", "2-4", "5-14", "15-30", "31-44", "45-64", "65+", "Unknown"),
+                                                          labels = c("<2", "2-4", "5-14", "15-30", "31-44", "45-64", "65+", "Unknown")
+                                       ) +
+                                       scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+                                       geom_label(aes(x = 2006, y = 150, label = "PCV7"),
+                                                  fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+                                       geom_label(aes(x = 2011, y = 150, label = "PCV13"),
+                                                  fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+                                       ggtitle("Case Counts of IPD Caused by Serotype 1\nin England by Demographic Groups") +
+                                       xlab("Year") +
+                                       ylab("Serotype 1 Cases") +
+                                       theme_bw() +
+                                       theme(legend.position="none"),
+                                     ggplot(all_ageGroup7, aes(x = year, y = Conf_Int$proportion*100000, group = ageGroup7,
+                                                               color = ageGroup7)) +
+                                       geom_line(size = 1.5) +
+                                       geom_errorbar(aes(ymin = Conf_Int$lower*100000, ymax = Conf_Int$upper*100000), # It doesn't matter whether I add the CI or not because the Pop data is quite huge, I suppose (?)
+                                                     width = .1) +
+                                       geom_vline(data = vaccine_UK, aes(xintercept = year,
+                                                                         colour = vaccine),
+                                                  linetype = "dashed") +
+                                       scale_color_manual(values = c(col_map),
+                                                          name = "Demographic",
+                                                          breaks = c("<2", "2-4", "5-14", "15-30", "31-44", "45-64", "65+", "Unknown"),
+                                                          labels = c("<2", "2-4", "5-14", "15-30", "31-44", "45-64", "65+", "Unknown")
+                                       ) +
+                                       scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+                                       scale_linetype_manual(values = c(vacc_map),
+                                                             name = "Vaccine",
+                                                             labels = c("PCV7", "PCV13")) +
+                                       geom_label(aes(x = 2006, y = 2.5, label = "PCV7"),
+                                                  fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+                                       geom_label(aes(x = 2011, y = 2.5, label = "PCV13"),
+                                                  fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+                                       ggtitle("Incidence of IPD Caused by Serotype 1\nin England by Demographic Groups (per 100,000 population)") +
+                                       xlab("Year") +
+                                       ylab("Serotype 1 Incidence") +
+                                       theme_bw() +
+                                       theme(legend.position="none")
+                                     ))
+
+England_7ageGroups
+
+legend <- cowplot::get_legend(ggplot(all_ageGroup7, aes(x = year, y = counts, group = ageGroup7,
+                                                        color = ageGroup7)) +
+                                geom_line(size = 1.5) +
+                                geom_vline(data = vaccine_UK, aes(xintercept = year,
+                                                                  colour = vaccine),
+                                           linetype = "dashed") +
+                                scale_color_manual(values = c(col_map),
+                                                   name = "Demographic",
+                                                   breaks = c("<2", "2-4", "5-14", "15-30", "31-44", "45-64", "65+", "Unknown"),
+                                                   labels = c("<2", "2-4", "5-14", "15-30", "31-44", "45-64", "65+", "Unknown")
+                                ) +
+                                scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+                                geom_label(aes(x = 2006, y = 150, label = "PCV7"),
+                                           fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+                                geom_label(aes(x = 2011, y = 150, label = "PCV13"),
+                                           fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+                                ggtitle("Case Counts of IPD Caused by Serotype 1\nin England by Demographic Groups") +
+                                xlab("Year") +
+                                ylab("Serotype 1 Cases") +
+                                theme_bw() + 
+                                theme(legend.box.margin = margin(0, 0, 0, 12))
+)
+
+# add the legend to the row we made earlier. Give it one-third of 
+# the width of one plot (via rel_widths).
+cowplot::plot_grid(England_7ageGroups, legend, rel_widths = c(2, 0.3))
+dev.off()
 
 # CI calculations for 9 Regions
 region <- dat_G %>% 
@@ -485,6 +605,12 @@ all_reg <- merge(region, pop_region,
                 incid_Ser1 = Conf_Int$proportion) # per-100,000 population
 
 write.csv(all_reg, "raw_data/incidence_CI_per_year_region.csv", row.names = FALSE)
+
+# Kruskal test
+kruskal.test(Conf_Int.proportion ~ current.region.name, data = all_reg)
+
+# Post-hoc
+FSA::dunnTest(Conf_Int.proportion ~ current.region.name, data = all_reg, method = "bonferroni")
 
 # Viz counts
 png("pictures/counts_yearRegion.png", width = 20, height = 12, unit = "cm", res = 1200)
@@ -546,6 +672,228 @@ ggplot(all_reg, aes(x = year, y = Conf_Int$proportion*100000, group = current.re
   ylab("Serotype 1 Incidence") +
   theme_bw()
 dev.off()
+
+png("pictures/combined_region.png", width = 30, height = 12, unit = "cm", res = 1200)
+England_region <-
+  cowplot::plot_grid(plotlist = list(ggplot(all_reg, aes(x = year, y = counts, group = current.region.name,
+                                                         color = current.region.name)) +
+                                       geom_line(size = 1.5) +
+                                       geom_vline(data = vaccine_UK, aes(xintercept = year),
+                                                  colour = "black",
+                                                  linetype = "dashed") +
+                                       scale_color_manual(values = c(col_map),
+                                                          name = "Region",
+                                                          breaks = c("North West", "North East", "Yorkshire and The Humber",
+                                                                     "East Midlands", "West Midlands", "East of England",
+                                                                     "London", "South East", "South West"),
+                                                          labels =  c("North West", "North East", "Yorkshire and The Humber",
+                                                                      "East Midlands", "West Midlands", "East of England",
+                                                                      "London", "South East", "South West")
+                                       ) +
+                                       scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+                                       geom_label(aes(x = 2006, y = 100, label = "PCV7"),
+                                                  fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+                                       geom_label(aes(x = 2011, y = 100, label = "PCV13"),
+                                                  fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+                                       ggtitle("Case Counts of IPD Caused by Serotype 1\nin England by Region") +
+                                       xlab("Year") +
+                                       ylab("Serotype 1 Cases") +
+                                       theme_bw() +
+                                       theme(legend.position="none"),
+                                     ggplot(all_reg, aes(x = year, y = Conf_Int$proportion*100000, group = current.region.name,
+                                                         color = current.region.name)) +
+                                       geom_line(size = 1.5) +
+                                       geom_errorbar(aes(ymin = Conf_Int$lower*100000, ymax = Conf_Int$upper*100000), # It doesn't matter whether I add the CI or not because the Pop data is quite huge, I suppose (?)
+                                                     width = .1) +
+                                       geom_vline(data = vaccine_UK, aes(xintercept = year,
+                                                                         colour = vaccine),
+                                                  linetype = "dashed") +
+                                       scale_color_manual(values = c(col_map),
+                                                          name = "Region",
+                                                          breaks = c("North West", "North East", "Yorkshire and The Humber",
+                                                                     "East Midlands", "West Midlands", "East of England",
+                                                                     "London", "South East", "South West"),
+                                                          labels =  c("North West", "North East", "Yorkshire and The Humber",
+                                                                      "East Midlands", "West Midlands", "East of England",
+                                                                      "London", "South East", "South West")
+                                       ) +
+                                       scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+                                       scale_linetype_manual(values = c(vacc_map),
+                                                             name = "Vaccine",
+                                                             labels = c("PCV7", "PCV13")) +
+                                       geom_label(aes(x = 2006, y = 2.5, label = "PCV7"),
+                                                  fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+                                       geom_label(aes(x = 2011, y = 2.5, label = "PCV13"),
+                                                  fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+                                       ggtitle("Incidence of IPD Caused by Serotype 1\nin England by Region (per 100,000 population)") +
+                                       xlab("Year") +
+                                       ylab("Serotype 1 Incidence") +
+                                       theme_bw() +
+                                       theme(legend.position="none")
+  ))
+
+England_region
+
+legend <- cowplot::get_legend(ggplot(all_reg, aes(x = year, y = counts, group = current.region.name,
+                                                  color = current.region.name)) +
+                                geom_line(size = 1.5) +
+                                geom_vline(data = vaccine_UK, aes(xintercept = year),
+                                           colour = "black",
+                                           linetype = "dashed") +
+                                scale_color_manual(values = c(col_map),
+                                                   name = "Region",
+                                                   breaks = c("North West", "North East", "Yorkshire and The Humber",
+                                                              "East Midlands", "West Midlands", "East of England",
+                                                              "London", "South East", "South West"),
+                                                   labels =  c("North West", "North East", "Yorkshire and The Humber",
+                                                               "East Midlands", "West Midlands", "East of England",
+                                                               "London", "South East", "South West")
+                                ) +
+                                scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+                                geom_label(aes(x = 2006, y = 100, label = "PCV7"),
+                                           fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
+                                geom_label(aes(x = 2011, y = 100, label = "PCV13"),
+                                           fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
+                                ggtitle("Case Counts of IPD Caused by Serotype 1\nin England by Region") +
+                                xlab("Year") +
+                                ylab("Serotype 1 Cases") +
+                                theme_bw() +
+                                theme(legend.box.margin = margin(0, 0, 0, 12))
+)
+
+# add the legend to the row we made earlier. Give it one-third of 
+# the width of one plot (via rel_widths).
+cowplot::plot_grid(England_region, legend, rel_widths = c(2, 0.4))
+dev.off()
+
+# 1.4. Choropleth! #############################################################
+# 1.4.1. Three maps based on the vaccination era ###############################
+
+# Workflow:
+# 1. Create/load the df
+# 2. Filter to the specific:
+# 2.1. Year range
+# 2.2. Regions of interest?
+# 3. Data preparation for GADM map
+# 4. Combine G_BF_ESPEN_Admin1_forGADM to *.shp data (CANNOT BE RUN VICE-VERSA)!!!
+
+# load all_reg first
+selected_map <- all_reg %>% 
+  dplyr::select(year, current.region.name, counts, PopSize) %>% 
+  dplyr::mutate(
+    vacc = case_when(
+      year < 2006 ~ "Pre-PCV7",
+      year >= 2006 & year < 2011 ~ "PCV7",
+      year >= 2011 ~ "PCV13",
+      TRUE ~ NA_character_
+    )) %>% 
+  dplyr::group_by(vacc, current.region.name) %>% 
+  dplyr::mutate(ave_N = mean(PopSize)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(vacc, current.region.name) %>% 
+  dplyr::mutate(n = sum(counts),
+                Incid = n/ave_N) %>% 
+  distinct()
+
+
+# 1.4.1.2. The geometry data ###################################################
+# 1. Download the *.shp data at:
+# https://geoportal.statistics.gov.uk/datasets/ons::regions-december-2023-boundaries-en-bfc-2/about
+GBR_shp_zip = "raw_data/Regions_December_2023_Boundaries_EN_BFC_-7302455802062307841.zip"
+GBR_shp_out = "raw_data/GBR_shp"
+unzip(GBR_shp_zip, exdir=GBR_shp_out)
+
+# 2. Load the file
+library(sf) # tidyverse cannot edit geospatial data.
+
+GBR_spdf <- sf::read_sf(dsn = "raw_data/GBR_shp/RGN_DEC_2023_EN_BFC.shp")
+
+# summary(GBR_spdf) # tells you the max and min coordinates, the kind of projection in use
+# length(GBR_spdf) # how many regions you have
+
+# Coz' this is an sf object
+head(sf::st_drop_geometry(GBR_spdf))
+glimpse(GBR_spdf)
+sort(unique(GBR_spdf$RGN23NM))
+sort(unique(dat_G$current.region.name))
+
+# NEXT:
+# U have to combine *.csv OR *.xlsx data to *.shp (CANNOT BE RUN VICE-VERSA)!!!
+# Convert the 'SpatialPolygonsDataFrame' to 'sf' object first!
+
+# Combine the df to *.shp data (CANNOT BE RUN VICE-VERSA)!!!
+# Convert the 'SpatialPolygonsDataFrame' to 'sf' object first:
+# Recall GBR_spdf <- st_read(dsn = GBR_shp_path_LINUX)
+
+# Notes: DO NOT Filter sf Data!!!!
+GBR_spdf_sf <- sf::st_as_sf(GBR_spdf, coords = c("longitude", "latitude"), crs = '4326')
+glimpse(GBR_spdf_sf)
+
+dat_1PrePCV7 <- selected_map %>% 
+  dplyr::filter(vacc == "Pre-PCV7")
+dat_2PCV7 <- selected_map %>% 
+  dplyr::filter(vacc == "PCV7")
+dat_3PCV13 <- selected_map %>% 
+  dplyr::filter(vacc == "PCV13")
+
+Comm_merged_1PrePCV7 <- merge(GBR_spdf_sf, dat_1PrePCV7, by.x = 'RGN23NM', by.y = 'current.region.name', all.x = TRUE) %>% 
+  dplyr::mutate(Incid = as.numeric(Incid)) %>% 
+  glimpse()
+Comm_merged_2PCV7 <- merge(GBR_spdf_sf, dat_2PCV7, by.x = 'RGN23NM', by.y = 'current.region.name', all.x = TRUE) %>% 
+  dplyr::mutate(Incid = as.numeric(Incid)) %>% 
+  glimpse()
+Comm_merged_3PCV13 <- merge(GBR_spdf_sf, dat_3PCV13, by.x = 'RGN23NM', by.y = 'current.region.name', all.x = TRUE) %>% 
+  dplyr::mutate(Incid = as.numeric(Incid)) %>% 
+  glimpse()
+
+
+# Max-min counts for plot colours:
+max_c <- max(selected_map$Incid)
+min_c <- min(selected_map$Incid)
+
+# Trial plot of the combined data:
+# Compiled_geom is not required.
+# Base plot trial source: https://r-charts.com/spatial/choropleth-map/?utm_content=cmp-true
+plot(GBR_spdf_sf$geometry,
+     main = "The 9 Regions of England")
+
+# Centroids (failed):
+# https://r-graph-gallery.com/169-170-basic-manipulation-of-shapefiles.html#centroid
+# centroids <- st_centroid(GBR_spdf_sf)#, of_largest_polygon = F)
+# centers <- cbind(centroids, st_coordinates(centroids)) # Small manipulation to add coordinates as columns
+
+# Combined plot:
+breaks_seq <- seq(min_c, max_c, length.out = 200)
+
+plot(Comm_merged_1PrePCV7[, "Incid"],
+     breaks = breaks_seq,
+     # nbreaks = 4,
+     pal = colorRampPalette(c("white", "maroon"))(199), # fill with (length breaks - 1)
+     main = "The 9 Regions of England During the Pre-PCV7 Era")
+# text(centers$X, centers$Y, Comm_merged_1PrePCV7$counts, cex = .9, col = "black")
+# Weird success
+
+# The real plot
+DataMerged <- c("Comm_merged_1PrePCV7", "Comm_merged_2PCV7", "Comm_merged_3PCV13")
+DataTitle <- list(Comm_merged_1PrePCV7 = "Pre-PCV7 Era (2003-2005)",
+                  Comm_merged_2PCV7 = "PCV7 Era (2006-2010)",
+                  Comm_merged_3PCV13 = "PCV13 Era (2011-2015)")
+
+# par(mfrow = c(1,3)) # mfrow failed to load for loop
+for (f in DataMerged) {
+  df <- get(f)
+  file_path <- file.path("pictures/", paste0(f, ".png"))
+  
+  mainn <- paste("\n", DataTitle[[f]])
+  
+  png(file = file_path, width = 10, height = 10, units = "cm", res = 800)
+  plot(df[, "Incid"],
+       breaks = breaks_seq,
+       pal = colorRampPalette(c("white", "maroon"))(199), # fill with (length breaks - 1)
+       main = mainn)
+  dev.off()
+}
+
 
 # Basic table for region-ageGroup counts
 regAgeGroup_details <- dat_G %>% 
@@ -727,6 +1075,20 @@ ggplot(Nat_weekly, aes(as.Date(weeks))) +
   theme_bw()
 dev.off()
 
+# Additional pic for only Serotype 1 case
+ggplot(incidence_weekly, aes(as.Date(weeks))) +
+  geom_line(aes(y = cases, colour = "counts_Ser1_weekly")) +
+  scale_x_date() +
+  scale_color_manual(values = col_imD_weekly,
+                     name = "Cases",
+                     breaks = c("counts_Ser1_weekly"),
+                     labels = c("Serotype 1")
+  ) +
+  ggtitle("The Counts of Serotype 1 in England") +
+  xlab("Year") +
+  ylab("Serotype 1 Cases (Aggregated by Week)") +
+  theme_bw()
+
 ## 2. Data Fitting #############################################################
 # The anatomy of an mcstate particle filter, as noted above, consists of three main components: \n 
 # 1. A set of observations to fit the model to, generated using mcstate::particle_filter_data(). \n 
@@ -814,6 +1176,20 @@ resistance_smx_tmp <-
 joined_AMR <- joined_serotype_GPSC %>% 
   dplyr::full_join(resistance_smx_tmp, by = c("assembly_name" = "isolate_id")) %>% 
   dplyr::mutate(ngsid = substr(assembly_name, 1, 8)) # correction for ngsid including those that sequenced but have no EpiData
+
+# load joined_clades first
+AMR_summary <- joined_clades %>% 
+  dplyr::select(GPSC, MLST_ST, resistance_smx, resistance_tmp) %>% 
+  dplyr::group_by(GPSC, MLST_ST, resistance_smx) %>% 
+  dplyr::mutate(smx = n()) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(GPSC, MLST_ST, resistance_tmp) %>% 
+  dplyr::mutate(tmp = n()) %>% 
+  dplyr::ungroup() %>% 
+  distinct() %>% 
+  view()
+
+write.csv(AMR_summary, "raw_data/AMR.csv")
 
 ## 5. Clade Analysis from Microreact ###########################################
 # Load dat_G first.
@@ -977,6 +1353,52 @@ ggplot(freq_clades_region, aes(x = year, y = Frequency, group = clade,
   ggtitle("The Frequency of GPSC31 Clades in England") +
   xlab("Year") +
   ylab("Frequency") +
+  theme_bw()
+dev.off()
+
+# I'm just kinda curious (2)...
+aggregated_clades <- joined_clades %>% 
+  dplyr::mutate(
+    Earliest.specimen.date = as.Date(Earliest.specimen.date),
+    weeks = cut(Earliest.specimen.date, breaks="week"),
+    months = cut(Earliest.specimen.date, breaks="month")
+  ) %>% 
+  # dplyr::group_by(year, current.region.name) %>% 
+  # dplyr::mutate("Serotype 1 Case" = n()) %>% 
+  # dplyr::ungroup() %>% 
+  dplyr::filter(!is.na(clade)) %>% 
+  dplyr::group_by(year, current.region.name) %>% 
+  dplyr::mutate(Sample_size = n()) %>% 
+  dplyr::group_by(clade, year, current.region.name) %>%
+  dplyr::mutate(n_per_clade = n(),
+                Frequency_clades = n()/Sample_size) %>%
+  dplyr::ungroup() %>% 
+  dplyr::select(year, current.region.name,
+                clade, n_per_clade, Sample_size, Frequency_clades) %>%
+  dplyr::filter(!is.na(current.region.name)) %>% 
+  dplyr::distinct() %>% 
+  dplyr::mutate(Conf_Int = epitools::binom.exact(n_per_clade, Sample_size))
+
+png("pictures/GPSC31_clades_FREQ_year_region.png", width = 22, height = 14, unit = "cm", res = 1200)
+ggplot(aggregated_clades, aes(x = year, y = Frequency_clades, group = clade, colour = clade)) +
+  # geom_area(stat = "bin", fill = "gray75")+
+  geom_line(size = 1.5) +
+  geom_vline(data = vaccine_UK, aes(xintercept = year,
+                                    colour = vaccine),
+             linetype = "dashed") +
+  scale_color_manual(values = c(clades_map),
+                     name = "GPSC31 Clades",
+                     breaks = c("Serotype 1 Case", "clade1", "clade2", "clade3", "PCV7", "PCV13"),
+                     labels = c("Serotype 1 Case", "Clade 1", "Clade 2", "Clade 3", "PCV7\n(2006)\n", "PCV13\n(2011)")) +
+  geom_errorbar(aes(ymin = Conf_Int$lower, ymax = Conf_Int$upper),
+                width = .02) +
+  scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
+  scale_y_continuous(trans = "log1p") +
+  facet_wrap(~ current.region.name, scales = "free") +
+  labs(title = "The Frequency of GPSC31 Clades per Year in England \nby Regions (per 100,000)",
+       x = "Year",
+       y = "Frequency per Year, Region",
+       fill = "Clades of GPSC31") +
   theme_bw()
 dev.off()
 
@@ -1191,7 +1613,7 @@ ggplot(clades_year, aes(x = year, y = value, group = variable,
              fill = "white", color = "black") + # 2006 = PCV7 = "gray80"
   geom_label(aes(x = 2011, y = 150, label = "PCV13"),
              fill = "white", color = "black") + # 2011 = PCV13 = "gray20"
-  ggtitle("The Counts of Serotype 1 in England") +
+  ggtitle("Case Counts of IPD Caused by Serotype 1\nin England") +
   xlab("Year") +
   ylab("Serotype 1 Cases") +
   theme_bw()
@@ -1300,25 +1722,6 @@ dimnames(Input_mD) <- list('Meningitis'=Meningitis, 'Outcome'=Outcome)
 All_OD <- epitools::oddsratio(Input_mD)
 All_OD
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # GPSCs vs. regions 
 chisq.test(table(joined_clades$current.region.name, joined_clades$GPSC))
 # data:  table(joined_clades$current.region.name, joined_clades$GPSC)
@@ -1355,7 +1758,7 @@ clades_combined <- merge(filtered_NA_counts, pop_year,
   #               incid_clades_year = Conf_Int$proportion) # per-100,000 population
   dplyr::mutate(incid_clades_year = count/PopSize)
 
-# Counts
+# Counts (filtered)
 png("pictures/GPSC31_counts_by_region.png", width = 25, height = 17, unit = "cm", res = 1200)
 ggplot(filtered_NA_counts, aes(x = year, y = count, colour = clade)) +
   geom_line(size = 1.5) +
@@ -1377,7 +1780,7 @@ ggplot(filtered_NA_counts, aes(x = year, y = count, colour = clade)) +
   theme_bw()
 dev.off()
 
-# Clade frequency per year only
+# Clade frequency per year only (filtered)
 png("pictures/GPSC31_freq_by_year_only.png", width = 25, height = 17, unit = "cm", res = 1200)
 ggplot(clades_combined, aes(x = year, y = incid_clades_year*100000, colour = clade)) +
   geom_line(size = 1.5) +
@@ -1395,14 +1798,14 @@ ggplot(clades_combined, aes(x = year, y = incid_clades_year*100000, colour = cla
   # annotate("segment", x = 2011, xend = 2011, y = -Inf, yend = Inf, linetype = "dashed") +
   scale_x_continuous(breaks = ~ axisTicks(., log = FALSE)) + # delete weird decimals in Year
   facet_wrap(~ current.region.name, scales = "free") +
-  labs(title = "The Frequency of GPSC31 per Year in England \nby Regions (per 100,000)",
+  labs(title = "The Frequency of GPSC31 Clades per Year in England \nby Regions (per 100,000)",
        x = "Year",
        y = "Frequency per Year",
        fill = "Clades of GPSC31") +
   theme_bw()
 dev.off()
 
-# Clade frequency per year, region
+# Clade frequency per year, region (filtered)
 pop_reg <- pop_l %>% 
   dplyr::group_by(Year, Region) %>% 
   dplyr::summarise(PopSize = sum(PopSize), .groups="keep") %>% 

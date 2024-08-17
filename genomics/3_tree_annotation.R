@@ -377,13 +377,14 @@ annotation_data <- pairwise_tests %>%
                                   T ~ "")) %>% 
   glimpse()
 
-png("pictures/genomics/sequence_blast_mean_within_clades.png", width = 24, height = 12, unit = "cm", res = 1200)
+png("pictures/genomics/sequence_blast_mean_within_clades.png", width = 20, height = 9, unit = "cm", res = 1200)
 pic <- ggplot(tre_blast_summary, aes(x = clade, y = mean, fill = genes)) +
   geom_bar(stat = "identity", position = position_dodge(), color = NA) +
   geom_errorbar(aes(ymin = mean-sd, ymax = mean+sd), 
                 position = position_dodge(0.9), width = 0.25) +
+  theme(strip.text = element_text(face = "italic")) +
   facet_wrap(~ blast, scales = "free_y") +
-  labs(title = "Length and Mismatch of coiA and comCDE Across GPSC31 Clades",
+  labs(title = expression("Average Length and Mismatch of"~italic(coiA)~"and"~italic(comCDE)~"Across GPSC31 Clades"),
        x = "Clades of GPSC31",
        y = "Mean Value",
        fill = "Genes") +
@@ -532,8 +533,10 @@ names(clades) <- temp_clade$clade
 
 tr <- groupOTU(tre_BD$tree, clades, "Clade")
 Clade <- NULL
-ggtree_clade <- ggtree(tr=tr, layout="fan", mrsd = 2014-07-11,
-                       open.angle=15, size=0.75, aes(colour=Clade)) +
+ggtree_clade <- ggtree(tr=tr, layout="rectangular", mrsd = 2014-07-11, # layout="fan" is interesting
+                       # open.angle=15,
+                       size=0.75,
+                       aes(colour=Clade)) +
   scale_colour_manual(
     name="GPSC31 Clades",
     values=c("gray75","steelblue","darkgreen","red"),
@@ -558,7 +561,7 @@ ggtree_vacc <- ggtree_clade %<+%
   ggtreeExtra::geom_fruit(
     geom=geom_tile,
     mapping=aes(fill=vacc),
-    width=10,
+    width=15,
     offset=0.01
   ) +
   scale_fill_manual(
@@ -579,9 +582,10 @@ ggtree_region <- ggtree_vacc %<+%
   tre_names +
   ggnewscale::new_scale_fill() +
   ggtreeExtra::geom_fruit(
+    # data = tre_names,
     geom=geom_tile,
     mapping=aes(fill=tre_names$current.region.name),
-    width=10,
+    width=15,
     offset=0.05
   ) +
   scale_fill_manual(
@@ -609,7 +613,7 @@ ggtree_ageGroup7 <- ggtree_region %<+%
   ggtreeExtra::geom_fruit(
     geom=geom_tile,
     mapping=aes(fill=tre_names$ageGroup7),
-    width=10,
+    width=15,
     offset=0.05
   ) +
   scale_fill_manual(
@@ -634,7 +638,7 @@ ggtree_ageGroup2 <- ggtree_ageGroup7 %<+%
   ggtreeExtra::geom_fruit(
     geom=geom_tile,
     mapping=aes(fill=tre_names$ageGroup2),
-    width=10,
+    width=15,
     offset=0.05
   ) +
   scale_fill_manual(
@@ -653,8 +657,8 @@ ggtree_ageGroup2
 dev.off()
 
 # For MLST
-png("pictures/genomics/tree_epiData_plus_MLST.png", width = 24, height = 12, unit = "cm", res = 1200)
-ggtree_MLST <- ggtree_ageGroup2 %<+%
+png("pictures/genomics/tree_epiData_plus_MLST_square.png", width = 24, height = 12, unit = "cm", res = 1200)
+ggtree_MLST <- ggtree_ageGroup7 %<+%
   tre_names +
   ggnewscale::new_scale_fill() +
   ggtreeExtra::geom_fruit(
