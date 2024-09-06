@@ -155,11 +155,25 @@ ggplot(R0_only %>% dplyr::filter(date <= "2004-12-31"), aes(x = date, y = R0_vac
 dev.off()
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 plot(time, beta_temporary, type = "l")
 plot(time, beta, type = "l")
 
 plot(time, R0_no_vacc, type = "l")
 lines(time, R0_vacc, col = "steelblue")
+
+
 
 
 for (t in seq_len(n_times)) {
