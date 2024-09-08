@@ -9,7 +9,7 @@ source ~/anaconda3/etc/profile.d/conda.sh
 
 cd $PBS_O_WORKDIR
 #mkdir /trialFolder # Failed
-conda run -n R_envConda Rscript 2_mlesky_1e5.R "mcmc_bacdating.rds" 2 TRUE 4 > myresult.txt
+conda run -n R_envConda Rscript 2_mlesky_1e5.R "mcmc_bacdating.rds" 2 TRUE 128 > myresult.txt
 #mv *.pdf myresult.txt $PBS_O_WORKDIR
 
 printenv > myenv.txt
