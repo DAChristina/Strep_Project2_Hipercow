@@ -19,9 +19,13 @@ dat <- dplyr::full_join(
 
 
 # Additional data from 2015 and other sequenced samples (n = 9 + n = 2):
-add_n11 <- dplyr::bind_rows(
+add_n11_n20 <- dplyr::bind_rows(
   readxl::read_excel("raw_data/nine_missing_specimen_date_serotype1_extended.xlsx"),
-  readxl::read_excel("raw_data/two_missing_specimen_date_serotype1_extended.xlsx")
+  readxl::read_excel("raw_data/two_missing_specimen_date_serotype1_extended.xlsx"),
+  # Additional 20 sequenced data from 2017 to 2023 (UPDATE 17 Oct. 2024)
+  readxl::read_excel("raw_data/serotype1_UKHSA_imperial_routine.xlsx") %>% 
+    dplyr::mutate(Earliestspecimendate = as.Date(Earliestspecimendate, format = "%Y-%m-%d"),
+                  AGEYR = as.numeric(AGEYR)),
 ) %>% 
   dplyr::mutate(RevisedOPIEID = NA) %>% 
   dplyr::rename(Earliest.specimen.date = Earliestspecimendate,
@@ -30,7 +34,7 @@ add_n11 <- dplyr::bind_rows(
                 current.region.name, MeningitisFlag, `30daydeath`,
                 ngsid, assembly_name)
 
-dat_G <- dplyr::bind_rows(dat, add_n11) %>% 
+dat_G <- dplyr::bind_rows(dat, add_n11_n20) %>% 
   # dat %>% 
   dplyr::mutate(ngsid = as.numeric(ngsid),
                 AGEYR = ifelse(AGEYR >= 90, 90, as.numeric(AGEYR)), # For incidence calculation, data grouped for people aged 90+
@@ -83,18 +87,23 @@ dat_G <- dplyr::bind_rows(dat, add_n11) %>%
 
 # Mannually delete 3 rows with duplicated IDs 
 # because distinct() & arrange()-filter() failed to produce what I really want
-write.csv(dat_G, "raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced.csv", row.names = FALSE)
+write.csv(dat_G, "raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_postThesis.csv", row.names = FALSE)
 
-dat_G <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_cleaned.csv")
+dat_G <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_postThesis_cleaned.csv")
 
 # EpiDescription based on incidences and CI
-# Total population data by age, year for each region
+# Total population data by age (rows), year (columns) for each region
+# I update population data from 2001 to 2023 (NOMISWEB Update 2024-07-24)
+# DOWNLOADED 17 Oct. 2024
 # SOURCE: https://www.nomisweb.co.uk/
-pop <- readxl::read_excel("raw_data/nomis_2024_04_15_124553_DCedit.xlsx") #%>% 
-# glimpse()
+# pop <- readxl::read_excel("raw_data/nomis_2024_04_15_124553_DCedit.xlsx") # ver.1 2001-2022
+
+pop <- readxl::read_excel("raw_data/nomis_2024_10_17_DCedit.xlsx") %>%  # ver.2 2001-2023
+  dplyr::mutate(`2024` = `2023`) # Temporary for 2024 population; ONS hasn't released the data yet!
+
 
 pop_l <- pop %>% 
-  tidyr::pivot_longer(cols = `2001`:`2022`,
+  tidyr::pivot_longer(cols = `2001`:`2024`,
                       names_to = "Year",
                       values_to = "PopSize") %>% 
   dplyr::mutate(Age = gsub("Age ", "", Age),
