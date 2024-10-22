@@ -616,10 +616,10 @@ all_reg <- merge(region, pop_region,
 write.csv(all_reg, "raw_data/incidence_CI_per_year_region.csv", row.names = FALSE)
 
 # Kruskal test
-kruskal.test(Conf_Int.proportion ~ current.region.name, data = all_reg)
+kruskal.test(Conf_Int$proportion ~ current.region.name, data = all_reg)
 
 # Post-hoc
-FSA::dunnTest(Conf_Int.proportion ~ current.region.name, data = all_reg, method = "bonferroni")
+FSA::dunnTest(Conf_Int$proportion ~ current.region.name, data = all_reg, method = "bonferroni")
 
 # Viz counts
 png("pictures/counts_yearRegion.png", width = 20, height = 12, unit = "cm", res = 1200)
