@@ -1,13 +1,39 @@
 # devtools::install_github("xavierdidelot/BactDating")
 
+library(ape)
+library(treedater)
 library(tidyverse)
 library(BactDating)
-library(ape)
 library(readxl)
 library(coda)
 library(socialmixr)
 
 source("global/all_function.R") # Collected functions stored here!
+
+# Treedater analysis
+# More info: https://github.com/emvolz/treedater
+
+tre_GPSC31 <- ape::read.tree("raw_data/gubbins/GPSC_31/n712_.node_labelled.final_tree.tre")
+tre_GPSC2 <- ape::read.tree("raw_data/gubbins/GPSC_2/n17_.node_labelled.final_tree.tre")
+
+# sts as sample times (in year-decimal) in vector format
+sts_df <- read.csv("raw_data/temporary_microreact_check.csv") %>% 
+  dplyr::mutate(Earliest.specimen.date = as.Date(Earliest.specimen.date)) %>% 
+  dplyr::filter(!is.na(microreact_ID)) %>% 
+  dplyr::select(microreact_ID, Earliest.specimen.date, year)
+
+sts <- setNames(sts_df$year, sts_df$microreact_ID)
+
+# Run treedater!
+# WARNING! TAKE A VERY LONG TIME TO FINISH!
+# treedater_GPSC31 <- treedater::dater(tre = tre_GPSC31, sts = sts, omega0 = NA)
+# treedater_GPSC2 <- treedater::dater(tre = tre_GPSC2, sts = sts, omega0 = NA)
+# 
+# saveRDS(treedater_GPSC31, file = "outputs/genomics/treedater_GPSC31.rds")
+# saveRDS(treedater_GPSC2, file = "outputs/genomics/treedater_GPSC2.rds")
+# 
+# # Trial load:
+# treedater_GPSC31 <- readRDS("outputs/genomics/treedater_GPSC31.rds")
 
 # see help(package='BactDating') for more info
 # Time-scaled tree with BactDating
@@ -25,7 +51,6 @@ run_bacdating <- function(nbIts){
   
   ##############################################################################
   tre_names <- as.data.frame(tre$tip.label) #%>% 
-  # rename(ID = 'tre$tip.label')
   tre_names$ID <- substr(tre$tip.label, 1, 8)
   tre_names <- dplyr::left_join(tre_names, data, by = c("ID" = "ngsid"))
   tre_names <- dplyr::left_join(tre_names, dat, by = c("ID.y" = "ID"))
@@ -58,14 +83,6 @@ run_bacdating <- function(nbIts){
   par(mfrow = c(1,1), mar = c(3, 3, 2, 2), mgp = c(1.7, 0.7, 0), bty = "n")
   plot(res_pr,'trace')
   dev.off()
-  
-  # ggplot(gene_dist_df, #%>% dplyr::filter(Gene == "group_2797"),
-  #        aes(x = record,
-  #            colour = Presence,
-  #            fill = Presence)) +
-  #   geom_bar() +
-  #   facet_wrap(~SC) +
-  #   theme_bw()
   
   # MCMC analysis
   mcmc_result <- BactDating::as.mcmc.resBactDating(res_pr)

@@ -1,15 +1,10 @@
 
 library(tidyverse)
 
-stats <- dplyr::left_join(
-  read.csv("raw_data/gubbins/sanger_stats_compiled_n746.csv") %>% 
-    dplyr::mutate(my_ID = paste0(my_ID, ".txt")),
-  read.csv("raw_data/gubbins/n739/stats_compiled.csv"),
-  by = c("my_ID" = "file")
-) %>% 
-  dplyr::mutate(contigs = substr(my_ID, 7, 51))
-
-# Have seen that Sanger's tool (assembly-stats) produce same result;
+# Notes: N50 of GPSC2 samples are above 30kb; so I filter out GPSC31 only!
+# Will fix data viz later!
+stats <- read.csv("raw_data/gubbins/sanger_stats_compiled_GPSC31.csv") %>% 
+  dplyr::mutate(my_ID = stringr::str_remove(my_ID, "stats_"))
 
 # Pruning based on tree output from microreact (https://microreact.org/upload)
 suppressWarnings({
@@ -24,20 +19,20 @@ pr_3$delete_priority <- 3
 
 pr_all <- rbind(pr_1, pr_2, pr_3)
 
-stats_joined <- dplyr::left_join(stats, pr_all, by = c("contigs" = "V1")) %>% 
-  dplyr::filter(!is.na(N50.y)) # I choose to use N50.y to directly filter out GPSC2
+stats_joined <- dplyr::left_join(stats, pr_all, by = c("my_ID" = "V1")) %>% 
+  dplyr::filter(!is.na(N50)) # I choose to use N50.y to directly filter out GPSC2
 stats_joined$delete_priority[is.na(stats_joined$delete_priority)] <- 0
 
 stats_G <- stats_joined %>% 
   dplyr::group_by(delete_priority) %>% 
-  dplyr::summarise(mean_L50 = mean(L50),
-                   mean_N50 = mean(N50.y),
-                   min_N50 = min(N50.y),
-                   max_N50 = max(N50.y),
-                   mean_gc_content = mean(gc_content),
-                   mean_mean = mean(mean),
-                   mean_seq_count = mean(sequence_count),
-                   mean_total_bps = mean(total_bps)) %>% 
+  dplyr::summarise(mean_L50 = mean(n_N50),
+                   mean_N50 = mean(N50),
+                   min_N50 = min(N50),
+                   max_N50 = max(N50),
+                   # mean_gc_content = mean(gc_content),
+                   mean_mean = mean(ave),
+                   mean_seq_count = mean(n_sum),
+                   mean_total_bps = mean(sum)) %>% 
   dplyr::ungroup()
 
 # PLOT Stats_joined N50, colours based on delete_priority ######################
@@ -46,23 +41,23 @@ stats_joined$col <- col_map[as.character(stats_joined$delete_priority)]
 
 png("pictures/tree_pruning.png", width = 12, height = 18, unit = "cm", res = 1200)
 par(mfrow = c(3,2), mar = c(3, 3, 2, 2), mgp = c(1.7, 0.7, 0), bty = "n")
-plot(stats_joined$L50, stats_joined$N50.y,
+plot(stats_joined$L50, stats_joined$N50,
      col = stats_joined$col,
      pch = 1, xlab = "L50", ylab = "")
-plot(stats_joined$mean, stats_joined$N50.y,
+plot(stats_joined$mean, stats_joined$N50,
      col = stats_joined$col,
      pch = 1, xlab = "Mean", ylab = "")
-plot(stats_joined$median, stats_joined$N50.y,
+plot(stats_joined$median, stats_joined$N50,
      col = stats_joined$col,
      pch = 1, xlab = "Median", ylab = "")
 
-plot(stats_joined$sequence_count, stats_joined$N50.y,
+plot(stats_joined$sequence_count, stats_joined$N50,
      col = stats_joined$col,
      pch = 1, xlab = "Sequence Count", ylab = "")
-plot(stats_joined$shortest, stats_joined$N50.y,
+plot(stats_joined$shortest, stats_joined$N50,
      col = stats_joined$col,
      pch = 1, xlab = "Shortest", ylab = "")
-plot(stats_joined$total_bps, stats_joined$N50.y,
+plot(stats_joined$total_bps, stats_joined$N50,
      col = stats_joined$col,
      pch = 1, xlab = "Total BPS", ylab = "")
 
@@ -72,16 +67,16 @@ par(mfrow = c(1,1))
 
 # Pruning based on N50 30kb (n = 703) ##########################################
 stats_30kb <- stats_joined %>% 
-  dplyr::filter(N50.y >= 30000,
+  dplyr::filter(N50 >= 30000,
                 delete_priority == 0) %>% # remove delete priority 1
-  dplyr::mutate(fasta_list = paste0(contigs, ".fasta"))
+  dplyr::mutate(fasta_list = paste0(my_ID, ".fasta"))
 
 # Data viz!
 stats_30kb$col <- col_map[as.character(stats_30kb$delete_priority)]
 
 png("pictures/tree_pruning_final_n703.png", width = 12, height = 12, unit = "cm", res = 1200)
 par(mfrow = c(1,1), mar = c(3, 3, 2, 2), mgp = c(1.7, 0.7, 0))
-plot(stats_30kb$total_bps, stats_30kb$N50.y,
+plot(stats_30kb$total_bps, stats_30kb$N50,
      col = "darkgreen", #stats_30kb$col,
      pch = 1,
      xlim = c(min(stats_30kb$total_bps), (max(stats_30kb$total_bps)+10000)),
@@ -91,8 +86,8 @@ plot(stats_30kb$total_bps, stats_30kb$N50.y,
 dev.off()
 
 # Generate list
-remove_GPSC31_choosen_n703_list <- stats_30kb$fasta_list
+remove_GPSC31_choosen_list <- stats_30kb$fasta_list
 
-write.table(remove_GPSC31_choosen_n703_list, "outputs/genomics/remove_GPSC31_choosen_n703_list.txt", 
+write.table(remove_GPSC31_choosen_list, "outputs/genomics/remove_GPSC31_choosen_list.txt", 
             row.names = FALSE, col.names = FALSE, quote = FALSE)
 

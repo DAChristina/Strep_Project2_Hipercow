@@ -91,6 +91,13 @@ write.csv(dat_G, "raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequen
 
 dat_G <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_postThesis_cleaned.csv")
 
+# Temporary data prep for microreact
+temporary_microreact_check <- dat_G %>% 
+  dplyr::mutate(microreact_ID = stringr::str_remove(assembly_name, ".fasta"),
+                Earliest.specimen.date = as.Date(Earliest.specimen.date))
+write.csv(temporary_microreact_check, "raw_data/temporary_microreact_check.csv", row.names = FALSE)
+
+
 # EpiDescription based on incidences and CI
 # Total population data by age (rows), year (columns) for each region
 # I update population data from 2001 to 2023 (NOMISWEB Update 2024-07-24)
@@ -787,6 +794,8 @@ dev.off()
 # 4. Combine G_BF_ESPEN_Admin1_forGADM to *.shp data (CANNOT BE RUN VICE-VERSA)!!!
 
 # load all_reg first
+all_reg <- read.csv("raw_data/incidence_CI_per_year_region.csv")
+
 selected_map <- all_reg %>% 
   dplyr::select(year, current.region.name, counts, PopSize) %>% 
   dplyr::mutate(
@@ -1122,7 +1131,7 @@ dev.off()
 ## 3. Serotypes and GPSCs Determination ########################################
 # Load dat_G first.
 
-# Load MLST result
+# Load MLST result (not included new surveillance 2017-2024)
 mlst_results <- dplyr::bind_rows(
   read.table("raw_data/gubbins/n739/mlst_results_GPSC31_n739.csv"),
   read.table("raw_data/gubbins/GPSC2_n7/mlst_results_GPSC2_n7.csv") %>% 
@@ -1132,32 +1141,41 @@ mlst_results <- dplyr::bind_rows(
   dplyr::rename(MLST_ST = V3)
 
 
-# Load All Serotype 1: n739 samples of GPSC31 and n7 samples of GPSC2
+# Load All Serotype 1: better load the data from PopPUNK result!
+# New data is updated from popPUNK output
 all_serotype1 <- dplyr::bind_rows(
-  read.table("raw_data/gubbins/remove_GPSC31_list.txt") %>%
+  read.table("raw_data/gubbins/remove_GPSC31_list.txt") %>% # pre-thesis data
     dplyr::mutate(GPSC = 31),
-  read.table("raw_data/gubbins/remove_GPSC2_list.txt") %>%
-    dplyr::mutate(GPSC = 2)
+  read.table("raw_data/gubbins/remove_GPSC2_list.txt") %>% # pre-thesis data
+    dplyr::mutate(GPSC = 2),
+  read.csv("raw_data/gubbins/outputs_PopPUNK_external_clusters_n20.csv") %>% # post-thesis data
+    dplyr::mutate(V1 = paste0(sample, ".fasta")) %>% 
+    dplyr::select(V1, GPSC)
 ) %>% 
   dplyr::mutate(serotype = 1)
 
-# Load n703 samples of GPSC31; filtered based on N50 >= 30kb
-stats <- read.csv("raw_data/gubbins/sanger_stats_compiled_n746.csv") %>% 
-  dplyr::mutate(V1 = paste0(substr(my_ID, 7, 51), ".fasta")) %>% 
+
+# Load filtered samples based on N50 >= 30kb (data should have been updated before!)
+stats <- dplyr::bind_rows(
+  read.csv("raw_data/gubbins/sanger_stats_compiled_GPSC31.csv"),
+  read.csv("raw_data/gubbins/sanger_stats_compiled_GPSC2.csv")
+) %>% 
+  dplyr::mutate(my_ID = stringr::str_remove(my_ID, "stats_"),
+                V1 = paste0(my_ID, ".fasta")) %>% 
   dplyr::rename(stats_sumBase = sum,
                 stats_nsumBase = n_sum,
                 stats_N50 = N50) %>% 
   dplyr::select(V1, stats_sumBase, stats_nsumBase, stats_N50)
 
-
-link_GPSC31_n703 <- read.table("raw_data/gubbins/remove_GPSC31_choosen_n703_list.txt") %>% 
-  dplyr::mutate(n703_choosen_GPSC31 = 1)
+# New choosen data (data should have been updated before!)
+link_GPSC31_n712 <- read.table("outputs/genomics/remove_GPSC31_choosen_list.txt") %>% 
+  dplyr::mutate(n712_choosen_GPSC31 = 1)
 
 joined_serotype_GPSC <- dat_G %>% 
   dplyr::full_join(stats, by = c("assembly_name" = "V1")) %>% 
   dplyr::full_join(all_serotype1, by = c("assembly_name" = "V1")) %>% 
   dplyr::full_join(mlst_results, by = c("assembly_name" = "V1")) %>% 
-  dplyr::full_join(link_GPSC31_n703, by = c("assembly_name" = "V1"))
+  dplyr::full_join(link_GPSC31_n712, by = c("assembly_name" = "V1"))
 
 
 ## 4. AMR Analysis #############################################################
