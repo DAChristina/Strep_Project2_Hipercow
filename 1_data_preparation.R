@@ -94,7 +94,8 @@ dat_G <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_seque
 # Temporary data prep for microreact
 temporary_microreact_check <- dat_G %>% 
   dplyr::mutate(microreact_ID = stringr::str_remove(assembly_name, ".fasta"),
-                Earliest.specimen.date = as.Date(Earliest.specimen.date))
+                Earliest.specimen.date = as.Date(Earliest.specimen.date)) %>% 
+  dplyr::select(microreact_ID, Earliest.specimen.date, current.region.name, year, ageGroup2, vacc)
 write.csv(temporary_microreact_check, "raw_data/temporary_microreact_check.csv", row.names = FALSE)
 
 
