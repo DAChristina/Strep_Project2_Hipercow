@@ -1,5 +1,6 @@
 # Data preparation
 library(tidyverse)
+library(reshape2)
 library(readxl)
 library(epitools)
 library(BactDating)
@@ -30,8 +31,20 @@ add_n11 <- dplyr::bind_rows(
                 current.region.name, MeningitisFlag, `30daydeath`,
                 ngsid, assembly_name)
 
-dat_G <- dplyr::bind_rows(dat, add_n11) %>% 
-  # dat %>% 
+dat_G <- dplyr::full_join(dat, add_n11, by = "ID") %>% 
+  dplyr::mutate(RevisedOPIEID = dplyr::coalesce(RevisedOPIEID.x, RevisedOPIEID.y),
+                Earliest.specimen.date = dplyr::coalesce(Earliest.specimen.date.x, Earliest.specimen.date.y),
+                AGEYR = dplyr::coalesce(AGEYR.x, AGEYR.y),
+                current.region.name = dplyr::coalesce(current.region.name.x, current.region.name.y),
+                MeningitisFlag = dplyr::coalesce(MeningitisFlag.x, MeningitisFlag.y),
+                `30daydeath` = dplyr::coalesce(`30daydeath.x`, `30daydeath.y`),
+                ngsid = dplyr::coalesce(ngsid.x, ngsid.y),
+                assembly_name = dplyr::coalesce(assembly_name.x, assembly_name.y)
+                ) %>% 
+  dplyr::select(ID, RevisedOPIEID, Earliest.specimen.date, AGEYR,
+                current.region.name, MeningitisFlag, `30daydeath`,
+                ngsid, assembly_name) %>% 
+  # I feel like a moron
   dplyr::mutate(ngsid = as.numeric(ngsid),
                 AGEYR = ifelse(AGEYR >= 90, 90, as.numeric(AGEYR)), # For incidence calculation, data grouped for people aged 90+
                 year = year(Earliest.specimen.date),
@@ -81,11 +94,20 @@ dat_G <- dplyr::bind_rows(dat, add_n11) %>%
                 ageLabel = ifelse(AGEYR >= 90, 90, as.numeric(AGEYR)), # For incidence calculation, data grouped for people aged 90+
   )
 
-# Mannually delete 3 rows with duplicated IDs 
-# because distinct() & arrange()-filter() failed to produce what I really want
-write.csv(dat_G, "raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced.csv", row.names = FALSE)
+# Personal check for sequenced data (should be 746 sequenced data + 1 NA)
+length(unique(dat_G$assembly_name))
+write.csv(dat_G, "raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_preThesis_cleaned.csv", row.names = FALSE)
 
-dat_G <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_cleaned.csv")
+dat_G <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_preThesis_cleaned.csv")
+
+# Check duplicated IDs again prior data analyses:
+duplicate_ids <- dat_G$ID[duplicated(dat_G$ID) | duplicated(dat_G$ID, fromLast = TRUE)]
+
+# Filter & display all columns
+duplicated_rows <- dat_G[dat_G$ID %in% duplicate_ids, ]
+glimpse(duplicated_rows)
+
+# No duplicated IDs. Yeay!
 
 # EpiDescription based on incidences and CI
 # Total population data by age, year for each region
@@ -607,10 +629,10 @@ all_reg <- merge(region, pop_region,
 write.csv(all_reg, "raw_data/incidence_CI_per_year_region.csv", row.names = FALSE)
 
 # Kruskal test
-kruskal.test(Conf_Int.proportion ~ current.region.name, data = all_reg)
+kruskal.test(Conf_Int$proportion ~ current.region.name, data = all_reg)
 
 # Post-hoc
-FSA::dunnTest(Conf_Int.proportion ~ current.region.name, data = all_reg, method = "bonferroni")
+FSA::dunnTest(Conf_Int$proportion ~ current.region.name, data = all_reg, method = "bonferroni")
 
 # Viz counts
 png("pictures/counts_yearRegion.png", width = 20, height = 12, unit = "cm", res = 1200)
@@ -865,11 +887,11 @@ plot(GBR_spdf_sf$geometry,
 # Combined plot:
 breaks_seq <- seq(min_c, max_c, length.out = 200)
 
-plot(Comm_merged_1PrePCV7[, "Incid"],
-     breaks = breaks_seq,
-     # nbreaks = 4,
-     pal = colorRampPalette(c("white", "maroon"))(199), # fill with (length breaks - 1)
-     main = "The 9 Regions of England During the Pre-PCV7 Era")
+# plot(Comm_merged_1PrePCV7[, "Incid"],
+#      breaks = breaks_seq,
+#      # nbreaks = 4,
+#      pal = colorRampPalette(c("white", "maroon"))(199), # fill with (length breaks - 1)
+#      main = "The 9 Regions of England During the Pre-PCV7 Era")
 # text(centers$X, centers$Y, Comm_merged_1PrePCV7$counts, cex = .9, col = "black")
 # Weird success
 
@@ -1177,7 +1199,9 @@ joined_AMR <- joined_serotype_GPSC %>%
   dplyr::full_join(resistance_smx_tmp, by = c("assembly_name" = "isolate_id")) %>% 
   dplyr::mutate(ngsid = substr(assembly_name, 1, 8)) # correction for ngsid including those that sequenced but have no EpiData
 
-# load joined_clades first
+# load joined_clades first coz' I analysed AMR in the end.
+joined_clades <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_preThesis_cleaned_joined.csv")
+
 AMR_summary <- joined_clades %>% 
   dplyr::select(GPSC, MLST_ST, resistance_smx, resistance_tmp) %>% 
   dplyr::group_by(GPSC, MLST_ST, resistance_smx) %>% 
@@ -1413,7 +1437,7 @@ tre_names <-
   dplyr::full_join(tre_names, joined_clades, by = c("ID_contigs" = "ngsid"))
 
 # Write cleaned EpiData plus genomic analysis
-write.csv(joined_clades, "raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_cleaned_joined.csv", row.names = FALSE)
+write.csv(joined_clades, "raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_preThesis_cleaned_joined.csv", row.names = FALSE)
 
 write.csv(tre_names, "raw_data/gubbins/n739/phandango_microreact_check/microreact_tre_names.csv", row.names = FALSE)
 write.csv(tre_names, "raw_data/gubbins/n703/phandango_microreact_check/microreact_tre_names.csv", row.names = FALSE)
@@ -1422,7 +1446,7 @@ write.csv(tre_names, "raw_data/gubbins/GPSC2_n7/phandango_microreact_check/micro
 
 ## 7. Other Data Viz ###########################################################
 # Basic table for region-ageGroup counts
-joined_clades <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_cleaned_joined.csv")
+joined_clades <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_preThesis_cleaned_joined.csv")
 
 aggregated_data <- joined_clades %>% 
   dplyr::mutate(
@@ -1463,10 +1487,10 @@ table_region <- aggregated_data %>%
                    "Meningitis" = sum(Meningitis),
                    "30 Day Death" = sum(`30 Day Death`)) %>% 
   dplyr::ungroup() %>% 
-  dplyr::mutate(Freq_sequenced = format((Sequenced/`Serotype 1 Case`*100), digits = 5),
+  dplyr::mutate(Freq_sequenced = format((Sequenced/`Serotype 1 Case`*100), digits = 3),
                 "Sequenced Samples" = paste0(Freq_sequenced, "%", " =(", Sequenced, "/", `Serotype 1 Case`, ")")) %>% 
-  dplyr::select(current.region.name, `Sequenced Samples`) %>% 
-  view()
+  dplyr::select(current.region.name, `Sequenced Samples`)
+view(table_region)
 
 table_ageGroup <- aggregated_data %>% 
   dplyr::group_by(ageGroup7) %>% 
@@ -1475,10 +1499,10 @@ table_ageGroup <- aggregated_data %>%
                    "Meningitis" = sum(Meningitis),
                    "30 Day Death" = sum(`30 Day Death`)) %>% 
   dplyr::ungroup() %>% 
-  dplyr::mutate(Freq_sequenced = format((Sequenced/`Serotype 1 Case`*100), digits = 5),
+  dplyr::mutate(Freq_sequenced = format((Sequenced/`Serotype 1 Case`*100), digits = 3),
                 "Sequenced Samples" = paste0(Freq_sequenced, "%", " =(", Sequenced, "/", `Serotype 1 Case`, ")")) %>% 
-  dplyr::select(ageGroup7, `Sequenced Samples`) %>% 
-  view()
+  dplyr::select(ageGroup7, `Sequenced Samples`)
+view(table_ageGroup)
 
 
 cases_year <- aggregated_data %>% 
@@ -1687,7 +1711,7 @@ dev.off()
 
 
 ## 8. Some Stats Analysis ######################################################
-joined_clades <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_cleaned_joined.csv")
+joined_clades <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_preThesis_cleaned_joined.csv")
 # Meningitis-death odd ratio for all data
 # (Death+ & Meningitis+)
 all_Dm <- joined_clades %>% 
@@ -1730,7 +1754,7 @@ chisq.test(table(joined_clades$current.region.name, joined_clades$GPSC))
 # GPSC31 Clade vs. regions 
 chi_region <- chisq.test(table(joined_clades$current.region.name, joined_clades$clade))
 print(chi_region)
-prop.table(chi_region)
+prop.table(chi_region$observed)
 # data:  table(joined_clades$current.region.name, joined_clades$clade)
 # X-squared = 48.53, df = 16, p-value = 3.92e-05
 # Post-hoc
@@ -1853,15 +1877,20 @@ ggplot(clades_combined_region, aes(x = year, y = incid_clades_year_reg*100000, c
 dev.off()
 
 # GPSCs vs. vaccination era
-joined_clades$year <- as.factor(joined_clades$year)
+joined_clades <- read.csv("raw_data/serotype1_UKHSA_imperial_date_age_region_MOLIS_sequenced_preThesis_cleaned_joined.csv")
+sequence_filtered <- joined_clades %>% 
+  dplyr::filter(!is.na(GPSC))
 
-anova_year_GPSCs <- aov(year ~ GPSC, data = joined_clades)
+sequence_filtered$year <- as.factor(sequence_filtered$year)
+sequence_filtered$GPSC <- as.numeric(sequence_filtered$GPSC)
+
+anova_year_GPSCs <- aov(GPSC ~ year, data = sequence_filtered)
 summary(anova_year_GPSCs)
 # Post-Hoc
 TukeyHSD(anova_year_GPSCs)
 
 
-chi_vacc_GPSCs <- chisq.test(table(joined_clades$vacc, joined_clades$GPSC))
+chi_vacc_GPSCs <- chisq.test(table(sequence_filtered$vacc, sequence_filtered$GPSC))
 
 # Post-hoc
 std_resid_vacc_GPSCs <- chi_vacc_GPSCs$stdres
