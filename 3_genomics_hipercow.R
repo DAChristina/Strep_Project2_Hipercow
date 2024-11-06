@@ -16,9 +16,6 @@ windows_check()
 hipercow_configuration() # for troubleshooting
 # hipercow_hello() # test job
 
-hipercow_environment_create(sources = "genomics/1_bacdating.R")
-hipercow_provision()
-
 # Check the installed packages again by using hipercow_configuration()
 # hipercow_configuration()
 
@@ -27,26 +24,27 @@ hipercow_provision()
 # hipercow_provision()
 
 # https://mrc-ide.github.io/hipercow/reference/hipercow_resources.html
-resources <- hipercow::hipercow_resources(cores = 32,
-                                          max_runtime = "30d",
+resources <- hipercow::hipercow_resources(cores = 20,
+                                          max_runtime = "60d",
                                           memory_per_node = "64G",
 )
 
 
-# Now pmcmc_run is a function:
-# pmcmc_run <- function(n_particles, n_steps)
-run_tree <- task_create_expr(run_mlesky(1e6), # try 1e8
+# BactDating #######################################################################
+hipercow_environment_create(sources = "genomics/1_treedater_bacdating_GPSC31.R")
+hipercow_provision()
+run_bactdating <- task_create_expr(run_bactdating(1e6), # try 1e8
                              resources = resources
 )
 
 # Something related to test the submitted job
-task_status(run_tree)
-task_result(run_tree)
-task_log_show(run_tree)
-task_info(run_tree)
-task_info(run_tree)$times
+task_status(run_bactdating)
+task_result(run_bactdating)
+task_log_show(run_bactdating)
+task_info(run_bactdating)
+task_info(run_bactdating)$times
 
-################################################################################
+# mleSky #######################################################################
 hipercow_environment_create(sources = "genomics/2_mlesky.R")
 hipercow_provision()
 run_pop <- task_create_expr(run_mlesky(1e6), # try 1e8
