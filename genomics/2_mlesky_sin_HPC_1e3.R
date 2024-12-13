@@ -11,6 +11,12 @@ library(tidyverse)
 
 # Functions ####################################################################
 # I change the model to fit hipercow requirement by deleting ncpu usage
+# results <- read.csv("outputs/main/seasonality_waning[-4, -0.5]_nice_final_with_vacc/tune_initial_with_CI.csv")
+# time_shift_1 = results[2,2]
+# time_shift_2 = results[3,2]
+# beta_0 = results[4,2]
+# beta_1 = results[5,2]
+# beta_2 = results[6,2]
 
 mod_parboot <-
   function (fit, nrep = 200, ncpu = 1, dd) 
@@ -23,6 +29,23 @@ mod_parboot <-
     if (fit$adapt_time_axis) 
       stop("parboot not supported with adapt_time_axis==TRUE")
     af <- approxfun(fit$time, fit$ne, rule = 2)
+    wave <- function(time, ne){
+      time_shift_1 = 0.1237232
+      time_shift_2 = 0.3658768
+      beta_0 = 0.03145838
+      beta_1 = 0.1587609
+      beta_2 = 0.1664045
+      vacc = 0.9*0.862*0.02 # FIXED PCV13 vaccination coverage * efficacy * proportion of kids below 2 y.o.
+      
+      time <- fit$time
+      ne <- fit$ne
+      
+      # Infant vaccination coverage occurs when PCV13 introduced in April 2010 (day 2648 from 01.01.2003)
+      beta_temporary = ne *(beta_0*((1+beta_1*cos(2*pi*((time_shift_1*365)+time)/365)) + (1+beta_2*sin(2*pi*((time_shift_2*365)+time)/365))))
+      beta = if (time >= 2011) beta_temporary*(1-vacc) else beta_temporary
+      
+      beta
+    }
     sts <- fit$sampleTimes
     if (is.null(fit$sampleTimes)) {
       sts <- ape::node.depth.edgelength(fit$tre)[1:ape::Ntip(fit$tre)]
@@ -35,16 +58,16 @@ mod_parboot <-
     cl <- parallel::makeCluster(ncpu)
     on.exit(parallel::stopCluster(cl))
     
-    # parallel::clusterExport(cl, c("fit", "af", "sts", "dd", "mlskygrid", "ddSimCoal", "simCoal"))
+    # parallel::clusterExport(cl, c("fit", "af", "wave", "sts", "dd", "mlskygrid", "ddSimCoal", "simCoal"))
     parallel::clusterExport(cl,
-                            varlist = c("fit", "af", "sts", "dd", "mlskygrid", "ddSimCoal", "simCoal"),
+                            varlist = c("fit", "af", "wave", "sts", "dd", "mlskygrid", "ddSimCoal", "simCoal"),
                             envir = environment())
     
     res = parallel::parLapply(cl, 1:nrep, function(irep) {
       if (dd == T) 
-        tr = ddSimCoal(sts, alphaFun = af, guessRootTime = min(c(min(sts), 
+        tr = ddSimCoal(sts, alphaFun = wave, guessRootTime = min(c(min(sts), 
                                                                  min(fit$time))))
-      else tr = simCoal(sts, alphaFun = af)
+      else tr = simCoal(sts, alphaFun = wave)
       f1 <- mlskygrid(tr, sampleTimes = sts, res = fit$res, 
                       tau = fit$tau, tau_tol = fit$tau_tol, ncross = fit$ncross, 
                       quiet = fit$quiet, NeStartTimeBeforePresent = fit$NeStartTimeBeforePresent, 
@@ -136,7 +159,7 @@ make_mlesky_df <- function(obj,input_tree,model_index,adapt,most_recent,strain) 
 }
 
 fit_mlesky_model <-
-  function(input_tree, model_index = 1, adapt = TRUE, most_recent = 2016, strain = "", replicates = 0, proportion = 0.9, ncpu = 4) {
+  function(input_tree, model_index = 1, adapt = TRUE, most_recent = 2023, strain = "", replicates = 0, proportion = 0.9, ncpu = 4) {
     
     # Fit model
     mlesky_obj <- fit_model(input_tree,
@@ -261,8 +284,8 @@ strain_name <- c("GPSC31")
 # )
 
 most_recent_date <- list()
-most_recent_date[["GPSC31"]] <- 2015.989041
-# most_recent_date[["GPSC2"]] <- 2022.221918
+most_recent_date[["GPSC31"]] <- 2022.860
+# most_recent_date[["GPSC2"]] <- 2023.233
 
 message(paste("Strain:",strain_name," Model index: ",model_index," Adaptation: ",adapt_val))
 
