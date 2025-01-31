@@ -1,6 +1,10 @@
 
 library(tidyverse)
 library(odin.dust)
+
+# I update odin.dust by force
+# remotes::install_github("mrc-ide/odin.dust")
+
 gen_sir <- odin.dust::odin_dust("inputs/sir_stochastic.R")
 
 # Running the SIR model with dust (parameters consisting of value, lo_CI, hi_CI)
